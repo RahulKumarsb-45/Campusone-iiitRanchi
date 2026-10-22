@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchAnnouncements, createAnnouncement, type AnnouncementType } from "@/lib/supabase"
+import { fetchAnnouncements, createAnnouncement, isStaffOrAdmin, type AnnouncementType } from "@/lib/supabase"
 
 export default function AnnouncementsPage() {
   const { user } = useAuth()
@@ -60,6 +60,16 @@ export default function AnnouncementsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+
+    if (!isStaffOrAdmin(user.role)) {
+      toast({
+        title: "Permission Denied",
+        description: "Only verified campus organizers, faculty, and administrators may broadcast announcements.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -105,7 +115,7 @@ export default function AnnouncementsPage() {
           </p>
         </div>
 
-        {user && (
+        {user && isStaffOrAdmin(user.role) && (
           <Button
             onClick={() => setShowAddModal(true)}
             className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black gap-1.5"

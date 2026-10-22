@@ -1,241 +1,297 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+const rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+const rawKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const isSupabaseConfigured = (): boolean => {
+  return (
+    rawUrl.length > 0 &&
+    !rawUrl.includes("placeholder-project") &&
+    !rawUrl.includes("your-project") &&
+    rawKey.length > 0 &&
+    !rawKey.includes("placeholder-anon-key") &&
+    !rawKey.includes("your-publishable-anon-key")
+  );
+};
+
+const supabaseUrl = rawUrl || "https://placeholder-project.supabase.co";
+const supabaseAnonKey = rawKey || "placeholder-anon-key";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // ================= TYPES =================
 
 export type EventType = {
-  id: number
-  title: string
-  description: string
-  long_description?: string
-  image: string
-  date: string
-  end_date?: string
-  location: string
-  address?: string
-  category: string
-  other_category_details?: string
-  tags: string[]
-  organizer: string
-  lead_organizer?: string
-  convener?: string
-  coordinator?: string
-  contact_number?: string
-  registration_link?: string
-  is_paid: boolean
-  price?: number
-  max_participants: number
-  current_participants: number
-  created_at: string
-  user_id?: string
-  needs_volunteers: boolean
-  volunteer_roles?: string[]
-}
+  id: number;
+  title: string;
+  description: string;
+  long_description?: string;
+  image: string;
+  date: string;
+  end_date?: string;
+  location: string;
+  address?: string;
+  category: string;
+  other_category_details?: string;
+  tags: string[];
+  organizer: string;
+  lead_organizer?: string;
+  convener?: string;
+  coordinator?: string;
+  contact_number?: string;
+  registration_link?: string;
+  is_paid: boolean;
+  price?: number;
+  max_participants: number;
+  current_participants: number;
+  created_at: string;
+  user_id?: string;
+  needs_volunteers: boolean;
+  volunteer_roles?: string[];
+};
 
 export type UserType = {
-  id: string
-  email: string
-  name: string
-  role: "student" | "faculty" | "guest" | "organizer" | "admin"
-  department?: string
-  year?: string
-  roll_number?: string
-  position?: string
-  phone?: string
-  address?: string
-  bio?: string
-  avatar_url?: string
-}
+  id: string;
+  email: string;
+  name: string;
+  role: "student" | "faculty" | "guest" | "organizer" | "admin";
+  department?: string;
+  year?: string;
+  roll_number?: string;
+  position?: string;
+  phone?: string;
+  address?: string;
+  bio?: string;
+  avatar_url?: string;
+};
 
 export type RegistrationType = {
-  id: number
-  event_id: number
-  user_id: string
-  registration_date: string
-  payment_status?: "pending" | "completed"
-  payment_id?: string
-  is_volunteer: boolean
-  volunteer_role?: string
-  event?: EventType
-}
+  id: number;
+  event_id: number;
+  user_id: string;
+  registration_date: string;
+  payment_status?: "pending" | "completed";
+  payment_id?: string;
+  is_volunteer: boolean;
+  volunteer_role?: string;
+  event?: EventType;
+};
 
 export type ClubType = {
-  id: number
-  name: string
-  code: string
-  category: "Technical" | "Cultural" | "Sports" | "Literary" | "Social"
-  description: string
-  lead_name: string
-  lead_email?: string
-  meeting_info?: string
-  image: string
-  tags: string[]
-  created_at?: string
-}
+  id: number;
+  name: string;
+  code: string;
+  category: "Technical" | "Cultural" | "Sports" | "Literary" | "Social";
+  description: string;
+  lead_name: string;
+  lead_email?: string;
+  meeting_info?: string;
+  image: string;
+  tags: string[];
+  created_at?: string;
+};
 
 export type InternshipType = {
-  id: number
-  title: string
-  company: string
-  role_type: string
-  stipend: string
-  location: string
-  deadline: string
-  eligibility: string
-  description: string
-  apply_link?: string
-  user_id?: string
-  created_at?: string
-}
+  id: number;
+  title: string;
+  company: string;
+  role_type: string;
+  stipend: string;
+  location: string;
+  deadline: string;
+  eligibility: string;
+  description: string;
+  apply_link?: string;
+  user_id?: string;
+  created_at?: string;
+};
 
 export type PlacementType = {
-  id: number
-  company: string
-  role: string
-  ctc: string
-  eligibility: string
-  drive_date: string
-  location: string
-  description: string
-  apply_link?: string
-  user_id?: string
-  created_at?: string
-}
+  id: number;
+  company: string;
+  role: string;
+  ctc: string;
+  eligibility: string;
+  drive_date: string;
+  location: string;
+  description: string;
+  apply_link?: string;
+  user_id?: string;
+  created_at?: string;
+};
 
 export type NoticeType = {
-  id: number
-  title: string
-  content: string
-  department: string
-  priority: "High" | "Medium" | "Normal"
-  notice_type: "college" | "hostel"
-  target_audience: string
-  file_url?: string
-  user_id?: string
-  created_at: string
-}
+  id: number;
+  title: string;
+  content: string;
+  department: string;
+  priority: "High" | "Medium" | "Normal";
+  notice_type: "college" | "hostel";
+  target_audience: string;
+  file_url?: string;
+  user_id?: string;
+  created_at: string;
+};
 
 export type AnnouncementType = {
-  id: number
-  title: string
-  content: string
-  category: string
-  urgent: boolean
-  user_id?: string
-  created_at: string
-}
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  urgent: boolean;
+  user_id?: string;
+  created_at: string;
+};
 
 export type LostFoundItemType = {
-  id: number
-  type: "lost" | "found"
-  title: string
-  description: string
-  category: string
-  location: string
-  date: string
-  contact: string
-  status: "open" | "claimed" | "resolved"
-  image?: string
-  user_id?: string
-  created_at: string
-}
+  id: number;
+  type: "lost" | "found";
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  date: string;
+  contact: string;
+  status: "open" | "claimed" | "resolved";
+  image?: string;
+  user_id?: string;
+  created_at: string;
+};
 
 export type MarketplaceItemType = {
-  id: number
-  title: string
-  description: string
-  price: number
-  category: string
-  condition: string
-  contact: string
-  status: "available" | "sold"
-  image?: string
-  user_id?: string
-  created_at: string
-}
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  condition: string;
+  contact: string;
+  status: "available" | "sold";
+  image?: string;
+  user_id?: string;
+  created_at: string;
+};
 
 export type GalleryImageType = {
-  id: number
-  title: string
-  description?: string
-  category: string
-  event_name?: string
-  image_url: string
-  user_id?: string
-  created_at: string
-}
+  id: number;
+  title: string;
+  description?: string;
+  category: string;
+  event_name?: string;
+  image_url: string;
+  user_id?: string;
+  created_at: string;
+};
+
+export type HostelComplaintType = {
+  id: number;
+  user_id: string;
+  student_name: string;
+  student_email: string;
+  hostel_block: "Hostel A" | "Hostel B" | "Hostel C" | "Girls Hostel" | "Other";
+  room_number: string;
+  category:
+    | "Electrical"
+    | "Plumbing"
+    | "Carpentry"
+    | "Internet/Wi-Fi"
+    | "Cleanliness"
+    | "Mess"
+    | "Other";
+  title: string;
+  description: string;
+  status: "Open" | "In Progress" | "Resolved" | "Rejected";
+  rejection_reason?: string;
+  resolution_notes?: string;
+  assigned_to?: string;
+  created_at: string;
+  updated_at: string;
+};
 
 // ================= EVENTS API =================
 
 export async function fetchEvents(options?: {
-  category?: string
-  limit?: number
-  orderBy?: string
-  ascending?: boolean
-  upcoming?: boolean
+  category?: string;
+  limit?: number;
+  orderBy?: string;
+  ascending?: boolean;
+  upcoming?: boolean;
 }): Promise<EventType[]> {
   try {
-    let query = supabase.from("events").select("*")
+    let query = supabase.from("events").select("*");
 
     if (options?.category && options.category !== "all") {
-      query = query.eq("category", options.category)
+      query = query.eq("category", options.category);
     }
 
     if (options?.upcoming) {
-      query = query.gte("date", new Date().toISOString())
+      query = query.gte("date", new Date().toISOString());
     }
 
     if (options?.orderBy) {
       if (options.orderBy.includes(".")) {
-        const [col, dir] = options.orderBy.split(".")
-        const isAsc = options.ascending !== undefined ? options.ascending : dir?.toLowerCase() !== "desc"
-        query = query.order(col, { ascending: isAsc })
+        const [col, dir] = options.orderBy.split(".");
+        const isAsc =
+          options.ascending !== undefined
+            ? options.ascending
+            : dir?.toLowerCase() !== "desc";
+        query = query.order(col, { ascending: isAsc });
       } else {
-        query = query.order(options.orderBy, { ascending: options.ascending ?? true })
+        query = query.order(options.orderBy, {
+          ascending: options.ascending ?? true,
+        });
       }
     } else {
-      query = query.order("date", { ascending: true })
+      query = query.order("date", { ascending: true });
     }
 
     if (options?.limit) {
-      query = query.limit(options.limit)
+      query = query.limit(options.limit);
     }
 
-    const { data, error } = await query
+    const { data, error } = await query;
 
     if (error) {
-      console.warn("Error fetching events from Supabase:", error.message)
-      return []
+      console.warn("Error fetching events from Supabase:", error.message);
+      return [];
     }
 
-    return (data as EventType[]) || []
+    return (data as EventType[]) || [];
   } catch (err) {
-    console.error("fetchEvents error:", err)
-    return []
+    console.error("fetchEvents error:", err);
+    return [];
   }
 }
 
 export async function fetchEventById(id: number): Promise<EventType | null> {
   try {
-    const { data, error } = await supabase.from("events").select("*").eq("id", id).maybeSingle()
+    const { data, error } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
 
     if (error) {
-      console.warn(`Error fetching event ${id}:`, error.message)
-      return null
+      console.warn(`Error fetching event ${id}:`, error.message);
+      return null;
     }
 
-    return (data as EventType) || null
+    return (data as EventType) || null;
   } catch (err) {
-    console.error("fetchEventById error:", err)
-    return null
+    console.error("fetchEventById error:", err);
+    return null;
   }
 }
 
-export async function createEvent(event: Omit<EventType, "id" | "created_at" | "current_participants">) {
+export async function createEvent(
+  event: Omit<EventType, "id" | "created_at" | "current_participants">,
+) {
   try {
     const { data, error } = await supabase
       .from("events")
@@ -246,17 +302,17 @@ export async function createEvent(event: Omit<EventType, "id" | "created_at" | "
           created_at: new Date().toISOString(),
         },
       ])
-      .select()
+      .select();
 
     if (error) {
-      console.error("Error creating event:", error)
-      return null
+      console.error("Error creating event:", error);
+      return null;
     }
 
-    return data ? (data[0] as EventType) : null
+    return data ? (data[0] as EventType) : null;
   } catch (err) {
-    console.error("createEvent error:", err)
-    return null
+    console.error("createEvent error:", err);
+    return null;
   }
 }
 
@@ -266,47 +322,50 @@ export async function updateEvent(id: number, updates: Partial<EventType>) {
       .from("events")
       .update(updates)
       .eq("id", id)
-      .select()
+      .select();
 
     if (error) {
-      console.error("Error updating event:", error)
-      return null
+      console.error("Error updating event:", error);
+      return null;
     }
 
-    return data ? (data[0] as EventType) : null
+    return data ? (data[0] as EventType) : null;
   } catch (err) {
-    console.error("updateEvent error:", err)
-    return null
+    console.error("updateEvent error:", err);
+    return null;
   }
 }
 
 export async function deleteEvent(id: number) {
   try {
-    const { error } = await supabase.from("events").delete().eq("id", id)
+    const { error } = await supabase.from("events").delete().eq("id", id);
     if (error) {
-      console.error("Error deleting event:", error)
-      return { success: false, error: error.message }
+      console.error("Error deleting event:", error);
+      return { success: false, error: error.message };
     }
-    return { success: true }
+    return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message }
+    return { success: false, error: err.message };
   }
 }
 
 // ================= REGISTRATIONS API =================
 
-export async function checkUserRegistration(eventId: number, userId: string): Promise<boolean> {
+export async function checkUserRegistration(
+  eventId: number,
+  userId: string,
+): Promise<boolean> {
   try {
     const { data } = await supabase
       .from("registrations")
       .select("id")
       .eq("event_id", eventId)
       .eq("user_id", userId)
-      .maybeSingle()
+      .maybeSingle();
 
-    return !!data
+    return !!data;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -314,7 +373,7 @@ export async function registerForEvent(
   eventId: number,
   userId: string,
   isVolunteer = false,
-  volunteerRole?: string
+  volunteerRole?: string,
 ) {
   try {
     // 1. Check if already registered
@@ -323,10 +382,10 @@ export async function registerForEvent(
       .select("id")
       .eq("event_id", eventId)
       .eq("user_id", userId)
-      .maybeSingle()
+      .maybeSingle();
 
     if (existingReg) {
-      return { error: "You are already registered for this event." }
+      return { error: "You are already registered for this event." };
     }
 
     // 2. Insert registration
@@ -341,29 +400,33 @@ export async function registerForEvent(
           volunteer_role: volunteerRole,
         },
       ])
-      .select()
+      .select();
 
     if (error) {
-      return { error: error.message }
+      return { error: error.message };
     }
 
     // 3. Increment current participants
     try {
-      await supabase.rpc("increment_participants", { event_id: eventId })
+      await supabase.rpc("increment_participants", { event_id: eventId });
     } catch {
       // Fallback manual increment if RPC is missing
-      const { data: ev } = await supabase.from("events").select("current_participants").eq("id", eventId).single()
+      const { data: ev } = await supabase
+        .from("events")
+        .select("current_participants")
+        .eq("id", eventId)
+        .single();
       if (ev) {
         await supabase
           .from("events")
           .update({ current_participants: (ev.current_participants || 0) + 1 })
-          .eq("id", eventId)
+          .eq("id", eventId);
       }
     }
 
-    return { data: data ? data[0] : null }
+    return { data: data ? data[0] : null };
   } catch (err: any) {
-    return { error: err.message || "Failed to register" }
+    return { error: err.message || "Failed to register" };
   }
 }
 
@@ -373,66 +436,92 @@ export async function cancelRegistration(eventId: number, userId: string) {
       .from("registrations")
       .delete()
       .eq("event_id", eventId)
-      .eq("user_id", userId)
+      .eq("user_id", userId);
 
     if (error) {
-      return { error: error.message }
+      return { error: error.message };
     }
 
     // Decrement participants count
-    const { data: ev } = await supabase.from("events").select("current_participants").eq("id", eventId).single()
+    const { data: ev } = await supabase
+      .from("events")
+      .select("current_participants")
+      .eq("id", eventId)
+      .single();
     if (ev && (ev.current_participants || 0) > 0) {
       await supabase
         .from("events")
         .update({ current_participants: ev.current_participants - 1 })
-        .eq("id", eventId)
+        .eq("id", eventId);
     }
 
-    return { success: true }
+    return { success: true };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
-export async function fetchUserRegistrations(userId: string): Promise<RegistrationType[]> {
+export async function fetchUserRegistrations(
+  userId: string,
+): Promise<RegistrationType[]> {
   try {
     const { data, error } = await supabase
       .from("registrations")
       .select("*, event:events(*)")
       .eq("user_id", userId)
-      .order("registration_date", { ascending: false })
+      .order("registration_date", { ascending: false });
 
     if (error) {
-      console.warn("fetchUserRegistrations error:", error.message)
-      return []
+      console.warn("fetchUserRegistrations error:", error.message);
+      return [];
     }
 
-    return (data as RegistrationType[]) || []
+    return (data as RegistrationType[]) || [];
   } catch (err) {
-    console.error("fetchUserRegistrations error:", err)
-    return []
+    console.error("fetchUserRegistrations error:", err);
+    return [];
   }
 }
 
 // ================= USER PROFILE API =================
 
-export async function updateUserProfile(id: string, updates: Partial<UserType>) {
+export function isStaffOrAdmin(role?: string): boolean {
+  if (!role) return false;
+  return ["admin", "faculty", "organizer"].includes(role.toLowerCase());
+}
+
+export function isAdmin(role?: string): boolean {
+  if (!role) return false;
+  return role.toLowerCase() === "admin";
+}
+
+export async function updateUserProfile(
+  id: string,
+  updates: Partial<UserType>,
+) {
   try {
+    // Defense-in-depth: Never allow client to escalate role or reassign ID
+    const {
+      role: _discardRole,
+      id: _discardId,
+      ...safeUpdates
+    } = updates as any;
+
     const { data, error } = await supabase
       .from("users")
-      .update(updates)
+      .update(safeUpdates)
       .eq("id", id)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error("Error updating profile:", error.message)
-      return { error: error.message }
+      console.error("Error updating profile:", error.message);
+      return { error: error.message };
     }
 
-    return { data: data as UserType }
+    return { data: data as UserType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -444,11 +533,13 @@ const fallbackClubs: ClubType[] = [
     name: "House of Geeks",
     code: "HOG",
     category: "Technical",
-    description: "Official coding, algorithmic programming, and open-source development club of IIIT Ranchi.",
+    description:
+      "Official coding, algorithmic programming, and open-source development club of IIIT Ranchi.",
     lead_name: "Rahul Sharma",
     lead_email: "hog@iiitranchi.ac.in",
     meeting_info: "Every Wednesday 6 PM, Computer Lab 2",
-    image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
     tags: ["coding", "development", "competitive-programming"],
   },
   {
@@ -456,11 +547,13 @@ const fallbackClubs: ClubType[] = [
     name: "Robotics & IoT Club",
     code: "ROBO",
     category: "Technical",
-    description: "Autonomous robotics, embedded systems, microcontrollers, and hardware innovations.",
+    description:
+      "Autonomous robotics, embedded systems, microcontrollers, and hardware innovations.",
     lead_name: "Aarav Patel",
     lead_email: "robotics@iiitranchi.ac.in",
     meeting_info: "Saturdays 3 PM, Innovation Lab",
-    image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80",
     tags: ["robotics", "iot", "hardware"],
   },
   {
@@ -468,11 +561,13 @@ const fallbackClubs: ClubType[] = [
     name: "Vibrance Cultural Society",
     code: "VIBRANCE",
     category: "Cultural",
-    description: "Fostering music, dramatic arts, dance, and cultural celebrations across campus.",
+    description:
+      "Fostering music, dramatic arts, dance, and cultural celebrations across campus.",
     lead_name: "Pooja Verma",
     lead_email: "cultural@iiitranchi.ac.in",
     meeting_info: "Tuesdays 5 PM, Open Amphitheater",
-    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
     tags: ["dance", "music", "drama"],
   },
   {
@@ -480,11 +575,13 @@ const fallbackClubs: ClubType[] = [
     name: "E-Cell IIIT Ranchi",
     code: "ECELL",
     category: "Social",
-    description: "Entrepreneurship cell empowering students to launch startups, incubate ideas, and build ventures.",
+    description:
+      "Entrepreneurship cell empowering students to launch startups, incubate ideas, and build ventures.",
     lead_name: "Ankit Roy",
     lead_email: "ecell@iiitranchi.ac.in",
     meeting_info: "Fridays 4 PM, Seminar Hall",
-    image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=800&q=80",
     tags: ["startups", "entrepreneurship", "ventures"],
   },
   {
@@ -492,41 +589,49 @@ const fallbackClubs: ClubType[] = [
     name: "Sports & Athletics Society",
     code: "SPORTS",
     category: "Sports",
-    description: "Cricket, football, badminton, chess, volleyball, and university athletics championships.",
+    description:
+      "Cricket, football, badminton, chess, volleyball, and university athletics championships.",
     lead_name: "Vikram Singh",
     lead_email: "sports@iiitranchi.ac.in",
     meeting_info: "Daily 5:30 PM, Sports Complex",
-    image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
+    image:
+      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
     tags: ["sports", "fitness", "athletics"],
   },
-]
+];
 
 export async function fetchClubs(category?: string): Promise<ClubType[]> {
   try {
-    let query = supabase.from("clubs").select("*").order("name")
+    let query = supabase.from("clubs").select("*").order("name");
     if (category && category !== "All") {
-      query = query.eq("category", category)
+      query = query.eq("category", category);
     }
-    const { data, error } = await query
+    const { data, error } = await query;
     if (error || !data || data.length === 0) {
       if (category && category !== "All") {
-        return fallbackClubs.filter((c) => c.category.toLowerCase() === category.toLowerCase())
+        return fallbackClubs.filter(
+          (c) => c.category.toLowerCase() === category.toLowerCase(),
+        );
       }
-      return fallbackClubs
+      return fallbackClubs;
     }
-    return data as ClubType[]
+    return data as ClubType[];
   } catch {
-    return fallbackClubs
+    return fallbackClubs;
   }
 }
 
 export async function createClub(club: Omit<ClubType, "id" | "created_at">) {
   try {
-    const { data, error } = await supabase.from("clubs").insert([club]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as ClubType }
+    const { data, error } = await supabase
+      .from("clubs")
+      .insert([club])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as ClubType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -542,7 +647,8 @@ const fallbackInternships: InternshipType[] = [
     location: "Bangalore / Hyderabad",
     deadline: new Date(Date.now() + 30 * 86400000).toISOString(),
     eligibility: "B.Tech CSE/ECE 3rd Year (CGPA 7.5+)",
-    description: "Work with Google Cloud or Search infrastructure teams building scalable systems in Go/C++.",
+    description:
+      "Work with Google Cloud or Search infrastructure teams building scalable systems in Go/C++.",
     apply_link: "https://careers.google.com",
   },
   {
@@ -554,7 +660,8 @@ const fallbackInternships: InternshipType[] = [
     location: "Bangalore (On-site)",
     deadline: new Date(Date.now() + 18 * 86400000).toISOString(),
     eligibility: "B.Tech CSE 2nd & 3rd Year",
-    description: "Build high-performance React & TypeScript user interfaces with top notch motion design.",
+    description:
+      "Build high-performance React & TypeScript user interfaces with top notch motion design.",
     apply_link: "https://careers.cred.club",
   },
   {
@@ -566,28 +673,38 @@ const fallbackInternships: InternshipType[] = [
     location: "Bangalore / Hybrid",
     deadline: new Date(Date.now() + 25 * 86400000).toISOString(),
     eligibility: "Pre-final & Final Year Students",
-    description: "Conduct research on multi-modal language models and efficient deep learning inference.",
+    description:
+      "Conduct research on multi-modal language models and efficient deep learning inference.",
     apply_link: "https://careers.microsoft.com",
   },
-]
+];
 
 export async function fetchInternships(): Promise<InternshipType[]> {
   try {
-    const { data, error } = await supabase.from("internships").select("*").order("deadline", { ascending: true })
-    if (error || !data || data.length === 0) return fallbackInternships
-    return data as InternshipType[]
+    const { data, error } = await supabase
+      .from("internships")
+      .select("*")
+      .order("deadline", { ascending: true });
+    if (error || !data || data.length === 0) return fallbackInternships;
+    return data as InternshipType[];
   } catch {
-    return fallbackInternships
+    return fallbackInternships;
   }
 }
 
-export async function createInternship(internship: Omit<InternshipType, "id" | "created_at">) {
+export async function createInternship(
+  internship: Omit<InternshipType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("internships").insert([internship]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as InternshipType }
+    const { data, error } = await supabase
+      .from("internships")
+      .insert([internship])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as InternshipType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -602,7 +719,8 @@ const fallbackPlacements: PlacementType[] = [
     eligibility: "B.Tech CSE/ECE CGPA 8.0+",
     drive_date: new Date(Date.now() + 14 * 86400000).toISOString(),
     location: "Virtual Drive & PPT",
-    description: "Full-time campus recruitment drive for final year batch. Online assessment followed by technical interviews.",
+    description:
+      "Full-time campus recruitment drive for final year batch. Online assessment followed by technical interviews.",
     apply_link: "https://tpo.iiitranchi.ac.in",
   },
   {
@@ -613,7 +731,8 @@ const fallbackPlacements: PlacementType[] = [
     eligibility: "B.Tech CSE/ECE with no active backlogs",
     drive_date: new Date(Date.now() + 21 * 86400000).toISOString(),
     location: "IIIT Ranchi Main Campus",
-    description: "Campus recruitment for graduating engineers. Focus on DSA, System Design, and Leadership Principles.",
+    description:
+      "Campus recruitment for graduating engineers. Focus on DSA, System Design, and Leadership Principles.",
     apply_link: "https://tpo.iiitranchi.ac.in",
   },
   {
@@ -624,28 +743,38 @@ const fallbackPlacements: PlacementType[] = [
     eligibility: "B.Tech CSE/ECE CGPA 7.0+",
     drive_date: new Date(Date.now() + 28 * 86400000).toISOString(),
     location: "Virtual Drive",
-    description: "Database and cloud infrastructure engineering roles at Oracle India Cloud Center.",
+    description:
+      "Database and cloud infrastructure engineering roles at Oracle India Cloud Center.",
     apply_link: "https://tpo.iiitranchi.ac.in",
   },
-]
+];
 
 export async function fetchPlacements(): Promise<PlacementType[]> {
   try {
-    const { data, error } = await supabase.from("placements").select("*").order("drive_date", { ascending: true })
-    if (error || !data || data.length === 0) return fallbackPlacements
-    return data as PlacementType[]
+    const { data, error } = await supabase
+      .from("placements")
+      .select("*")
+      .order("drive_date", { ascending: true });
+    if (error || !data || data.length === 0) return fallbackPlacements;
+    return data as PlacementType[];
   } catch {
-    return fallbackPlacements
+    return fallbackPlacements;
   }
 }
 
-export async function createPlacement(placement: Omit<PlacementType, "id" | "created_at">) {
+export async function createPlacement(
+  placement: Omit<PlacementType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("placements").insert([placement]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as PlacementType }
+    const { data, error } = await supabase
+      .from("placements")
+      .insert([placement])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as PlacementType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -655,7 +784,8 @@ const fallbackNotices: NoticeType[] = [
   {
     id: 1,
     title: "Schedule for Mid-Semester Examinations Autumn 2025",
-    content: "The Mid-Semester Examinations for B.Tech Autumn Semester 2025 will commence from the 2nd week of next month. Students must carry their valid institute ID cards to the examination halls.",
+    content:
+      "The Mid-Semester Examinations for B.Tech Autumn Semester 2025 will commence from the 2nd week of next month. Students must carry their valid institute ID cards to the examination halls.",
     department: "Academic Affairs",
     priority: "High",
     notice_type: "college",
@@ -665,7 +795,8 @@ const fallbackNotices: NoticeType[] = [
   {
     id: 2,
     title: "Summer Research Internship Application Guidelines",
-    content: "Eligible undergraduate students seeking faculty-mentored summer research projects should submit their proposals by the end of this month through the academic portal.",
+    content:
+      "Eligible undergraduate students seeking faculty-mentored summer research projects should submit their proposals by the end of this month through the academic portal.",
     department: "Dean R&D",
     priority: "Medium",
     notice_type: "college",
@@ -675,7 +806,8 @@ const fallbackNotices: NoticeType[] = [
   {
     id: 3,
     title: "Hostel Mess Menu Revision & Maintenance Guidelines",
-    content: "The revised mess menu approved by the Student Mess Committee is effective from Monday. Hostel residents are requested to ensure all electrical appliances comply with safety regulations.",
+    content:
+      "The revised mess menu approved by the Student Mess Committee is effective from Monday. Hostel residents are requested to ensure all electrical appliances comply with safety regulations.",
     department: "Chief Warden Office",
     priority: "High",
     notice_type: "hostel",
@@ -685,41 +817,55 @@ const fallbackNotices: NoticeType[] = [
   {
     id: 4,
     title: "Campus Wi-Fi Maintenance & Certificate Renewal",
-    content: "Routine maintenance of campus network switches and Wi-Fi access points will take place this Sunday from 2 AM to 5 AM. Internet services may experience brief interruptions.",
+    content:
+      "Routine maintenance of campus network switches and Wi-Fi access points will take place this Sunday from 2 AM to 5 AM. Internet services may experience brief interruptions.",
     department: "IT Services Cell",
     priority: "Normal",
     notice_type: "college",
     target_audience: "All Students & Staff",
     created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
-]
+];
 
-export async function fetchNotices(noticeType?: "college" | "hostel"): Promise<NoticeType[]> {
+export async function fetchNotices(
+  noticeType?: "college" | "hostel",
+): Promise<NoticeType[]> {
   try {
-    let query = supabase.from("notices").select("*").order("created_at", { ascending: false })
+    let query = supabase
+      .from("notices")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (noticeType) {
-      query = query.eq("notice_type", noticeType)
+      query = query.eq("notice_type", noticeType);
     }
-    const { data, error } = await query
+    const { data, error } = await query;
     if (error || !data || data.length === 0) {
       if (noticeType) {
-        return fallbackNotices.filter((n) => n.notice_type === noticeType)
+        return fallbackNotices.filter((n) => n.notice_type === noticeType);
       }
-      return fallbackNotices
+      return fallbackNotices;
     }
-    return data as NoticeType[]
+    return data as NoticeType[];
   } catch {
-    return noticeType ? fallbackNotices.filter((n) => n.notice_type === noticeType) : fallbackNotices
+    return noticeType
+      ? fallbackNotices.filter((n) => n.notice_type === noticeType)
+      : fallbackNotices;
   }
 }
 
-export async function createNotice(notice: Omit<NoticeType, "id" | "created_at">) {
+export async function createNotice(
+  notice: Omit<NoticeType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("notices").insert([notice]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as NoticeType }
+    const { data, error } = await supabase
+      .from("notices")
+      .insert([notice])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as NoticeType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -729,7 +875,8 @@ const fallbackAnnouncements: AnnouncementType[] = [
   {
     id: 1,
     title: 'Annual Cultural Fest "Kavach" Dates Announced',
-    content: "IIIT Ranchi is proud to announce Kavach 2025, taking place over three days next month with music concerts, hackathons, and guest performances!",
+    content:
+      "IIIT Ranchi is proud to announce Kavach 2025, taking place over three days next month with music concerts, hackathons, and guest performances!",
     category: "Events",
     urgent: false,
     created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
@@ -737,30 +884,40 @@ const fallbackAnnouncements: AnnouncementType[] = [
   {
     id: 2,
     title: "Convocation Robes & Rehearsal Schedule",
-    content: "All graduating students are instructed to report to the Main Auditorium at 9:00 AM sharp on Saturday for the mandatory dress rehearsal and robe distribution.",
+    content:
+      "All graduating students are instructed to report to the Main Auditorium at 9:00 AM sharp on Saturday for the mandatory dress rehearsal and robe distribution.",
     category: "Convocation",
     urgent: true,
     created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
-]
+];
 
 export async function fetchAnnouncements(): Promise<AnnouncementType[]> {
   try {
-    const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
-    if (error || !data || data.length === 0) return fallbackAnnouncements
-    return data as AnnouncementType[]
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error || !data || data.length === 0) return fallbackAnnouncements;
+    return data as AnnouncementType[];
   } catch {
-    return fallbackAnnouncements
+    return fallbackAnnouncements;
   }
 }
 
-export async function createAnnouncement(announcement: Omit<AnnouncementType, "id" | "created_at">) {
+export async function createAnnouncement(
+  announcement: Omit<AnnouncementType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("announcements").insert([announcement]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as AnnouncementType }
+    const { data, error } = await supabase
+      .from("announcements")
+      .insert([announcement])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as AnnouncementType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -771,7 +928,8 @@ const fallbackLostFound: LostFoundItemType[] = [
     id: 1,
     type: "lost",
     title: "HP Laptop Charger (65W Type-C)",
-    description: "Left behind in Computer Lab 3 on the 2nd floor desk during the afternoon lab session.",
+    description:
+      "Left behind in Computer Lab 3 on the 2nd floor desk during the afternoon lab session.",
     category: "Electronics",
     location: "Computer Lab 3, Academic Block",
     date: new Date(Date.now() - 1 * 86400000).toISOString(),
@@ -803,45 +961,65 @@ const fallbackLostFound: LostFoundItemType[] = [
     status: "open",
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
-]
+];
 
 export async function fetchLostFoundItems(): Promise<LostFoundItemType[]> {
   try {
-    const { data, error } = await supabase.from("lost_found_items").select("*").order("date", { ascending: false })
-    if (error || !data || data.length === 0) return fallbackLostFound
-    return data as LostFoundItemType[]
+    const { data, error } = await supabase
+      .from("lost_found_items")
+      .select("*")
+      .order("date", { ascending: false });
+    if (error || !data || data.length === 0) return fallbackLostFound;
+    return data as LostFoundItemType[];
   } catch {
-    return fallbackLostFound
+    return fallbackLostFound;
   }
 }
 
-export async function createLostFoundItem(item: Omit<LostFoundItemType, "id" | "created_at">) {
+export async function createLostFoundItem(
+  item: Omit<LostFoundItemType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("lost_found_items").insert([item]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as LostFoundItemType }
+    const { data, error } = await supabase
+      .from("lost_found_items")
+      .insert([item])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as LostFoundItemType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
-export async function updateLostFoundStatus(id: number, status: "open" | "claimed" | "resolved") {
+export async function updateLostFoundStatus(
+  id: number,
+  status: "open" | "claimed" | "resolved",
+) {
   try {
-    const { data, error } = await supabase.from("lost_found_items").update({ status }).eq("id", id).select().single()
-    if (error) return { error: error.message }
-    return { data: data as LostFoundItemType }
+    const { data, error } = await supabase
+      .from("lost_found_items")
+      .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as LostFoundItemType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
 export async function deleteLostFoundItem(id: number) {
   try {
-    const { error } = await supabase.from("lost_found_items").delete().eq("id", id)
-    if (error) return { error: error.message }
-    return { success: true }
+    const { error } = await supabase
+      .from("lost_found_items")
+      .delete()
+      .eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -851,78 +1029,104 @@ const fallbackMarketplace: MarketplaceItemType[] = [
   {
     id: 1,
     title: "Standard Engineering Mathematics & DSA Textbooks",
-    description: "Tanenbaum Computer Networks, Cormen Algorithms (CLRS), and Discrete Math in excellent condition with no markings.",
+    description:
+      "Tanenbaum Computer Networks, Cormen Algorithms (CLRS), and Discrete Math in excellent condition with no markings.",
     price: 650,
     category: "Books & Notes",
     condition: "Like New",
     contact: "WhatsApp: 9876543210",
     status: "available",
-    image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+    image:
+      "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
     created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
   {
     id: 2,
     title: "Hero Sprint Mountain Bicycle (21 Speed)",
-    description: "Used for 1 year on campus. Front suspension, working dual disc brakes, newly serviced tires.",
+    description:
+      "Used for 1 year on campus. Front suspension, working dual disc brakes, newly serviced tires.",
     price: 3200,
     category: "Vehicles / Cycles",
     condition: "Good",
     contact: "Call: 9876543215",
     status: "available",
-    image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80",
+    image:
+      "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80",
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
   {
     id: 3,
     title: "Foldable Study Table & Ergonomic Study Chair",
-    description: "Lightweight wooden folding study table with metal frame, suitable for hostel rooms.",
+    description:
+      "Lightweight wooden folding study table with metal frame, suitable for hostel rooms.",
     price: 950,
     category: "Hostel Essentials",
     condition: "Good",
     contact: "Call: 9876543219",
     status: "available",
-    image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=600&q=80",
+    image:
+      "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=600&q=80",
     created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
   },
-]
+];
 
 export async function fetchMarketplaceItems(): Promise<MarketplaceItemType[]> {
   try {
-    const { data, error } = await supabase.from("marketplace_items").select("*").order("created_at", { ascending: false })
-    if (error || !data || data.length === 0) return fallbackMarketplace
-    return data as MarketplaceItemType[]
+    const { data, error } = await supabase
+      .from("marketplace_items")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error || !data || data.length === 0) return fallbackMarketplace;
+    return data as MarketplaceItemType[];
   } catch {
-    return fallbackMarketplace
+    return fallbackMarketplace;
   }
 }
 
-export async function createMarketplaceItem(item: Omit<MarketplaceItemType, "id" | "created_at">) {
+export async function createMarketplaceItem(
+  item: Omit<MarketplaceItemType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("marketplace_items").insert([item]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as MarketplaceItemType }
+    const { data, error } = await supabase
+      .from("marketplace_items")
+      .insert([item])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as MarketplaceItemType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
-export async function updateMarketplaceStatus(id: number, status: "available" | "sold") {
+export async function updateMarketplaceStatus(
+  id: number,
+  status: "available" | "sold",
+) {
   try {
-    const { data, error } = await supabase.from("marketplace_items").update({ status }).eq("id", id).select().single()
-    if (error) return { error: error.message }
-    return { data: data as MarketplaceItemType }
+    const { data, error } = await supabase
+      .from("marketplace_items")
+      .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as MarketplaceItemType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
 export async function deleteMarketplaceItem(id: number) {
   try {
-    const { error } = await supabase.from("marketplace_items").delete().eq("id", id)
-    if (error) return { error: error.message }
-    return { success: true }
+    const { error } = await supabase
+      .from("marketplace_items")
+      .delete()
+      .eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
   }
 }
 
@@ -932,57 +1136,242 @@ const fallbackGallery: GalleryImageType[] = [
   {
     id: 1,
     title: "Annual Sports Day Opening Ceremony",
-    description: "Students and faculty marching during the sports championship ceremony.",
+    description:
+      "Students and faculty marching during the sports championship ceremony.",
     category: "Sports",
     event_name: "Annual Sports Meet",
-    image_url: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1000&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1000&q=80",
     created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
   {
     id: 2,
     title: "Hackathon Coding Night",
-    description: "Teams collaborating overnight at the campus Innovation Center during the 36-hour hackathon.",
+    description:
+      "Teams collaborating overnight at the campus Innovation Center during the 36-hour hackathon.",
     category: "Technical",
     event_name: "Campus Hackathon",
-    image_url: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1000&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1000&q=80",
     created_at: new Date(Date.now() - 8 * 86400000).toISOString(),
   },
   {
     id: 3,
     title: "Cultural Night & Music Fest",
-    description: "Student band performing live on the open-air auditorium stage.",
+    description:
+      "Student band performing live on the open-air auditorium stage.",
     category: "Cultural",
     event_name: "Campus Cultural Fest",
-    image_url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1000&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1000&q=80",
     created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
   },
   {
     id: 4,
     title: "Tech Innovation Keynote Address",
-    description: "Distinguished speaker presenting artificial intelligence research insights.",
+    description:
+      "Distinguished speaker presenting artificial intelligence research insights.",
     category: "Academic",
     event_name: "Tech Innovation Summit",
-    image_url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80",
+    image_url:
+      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80",
     created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
   },
-]
+];
 
 export async function fetchGalleryImages(): Promise<GalleryImageType[]> {
   try {
-    const { data, error } = await supabase.from("gallery_images").select("*").order("created_at", { ascending: false })
-    if (error || !data || data.length === 0) return fallbackGallery
-    return data as GalleryImageType[]
+    const { data, error } = await supabase
+      .from("gallery_images")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error || !data || data.length === 0) return fallbackGallery;
+    return data as GalleryImageType[];
   } catch {
-    return fallbackGallery
+    return fallbackGallery;
   }
 }
 
-export async function createGalleryImage(image: Omit<GalleryImageType, "id" | "created_at">) {
+export async function createGalleryImage(
+  image: Omit<GalleryImageType, "id" | "created_at">,
+) {
   try {
-    const { data, error } = await supabase.from("gallery_images").insert([image]).select().single()
-    if (error) return { error: error.message }
-    return { data: data as GalleryImageType }
+    const { data, error } = await supabase
+      .from("gallery_images")
+      .insert([image])
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as GalleryImageType };
   } catch (err: any) {
-    return { error: err.message }
+    return { error: err.message };
+  }
+}
+
+// ================= INSTITUTE SERVICES: HOSTEL COMPLAINTS =================
+
+const fallbackComplaints: HostelComplaintType[] = [
+  {
+    id: 1,
+    user_id: "demo-user-1",
+    student_name: "Rahul Kumar",
+    student_email: "rahul.23bcs045@iiitranchi.ac.in",
+    hostel_block: "Hostel B",
+    room_number: "204",
+    category: "Electrical",
+    title: "Ceiling fan regulator not working",
+    description:
+      "The fan operates only on maximum speed (5), regulator knob is unresponsive.",
+    status: "In Progress",
+    assigned_to: "Campus Maintenance Electrician",
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    updated_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    user_id: "demo-user-1",
+    student_name: "Rahul Kumar",
+    student_email: "rahul.23bcs045@iiitranchi.ac.in",
+    hostel_block: "Hostel B",
+    room_number: "204",
+    category: "Internet/Wi-Fi",
+    title: "Wi-Fi access point flapping on 2nd floor wing B",
+    description:
+      "Frequent disconnects every 15 minutes during evening study hours.",
+    status: "Resolved",
+    resolution_notes:
+      "AP rebooted and channel 6 interference resolved with IT cell.",
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+];
+
+export async function fetchHostelComplaints(options?: {
+  userId?: string;
+  isStaff?: boolean;
+  status?: string;
+}): Promise<HostelComplaintType[]> {
+  try {
+    let query = supabase
+      .from("hostel_complaints")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    // If student (not staff/admin), restrict query to their own user_id
+    if (!options?.isStaff && options?.userId) {
+      query = query.eq("user_id", options.userId);
+    }
+
+    if (options?.status && options.status !== "All") {
+      query = query.eq("status", options.status);
+    }
+
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      if (options?.userId && !options.isStaff) {
+        return fallbackComplaints.filter(
+          (c) => c.user_id === options.userId || c.user_id === "demo-user-1",
+        );
+      }
+      return fallbackComplaints;
+    }
+
+    return data as HostelComplaintType[];
+  } catch {
+    return fallbackComplaints;
+  }
+}
+
+export async function createHostelComplaint(
+  complaint: Omit<
+    HostelComplaintType,
+    | "id"
+    | "status"
+    | "created_at"
+    | "updated_at"
+    | "rejection_reason"
+    | "resolution_notes"
+  >,
+) {
+  try {
+    const { data, error } = await supabase
+      .from("hostel_complaints")
+      .insert([
+        {
+          ...complaint,
+          status: "Open",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.warn("createHostelComplaint DB error:", error.message);
+      return { error: error.message };
+    }
+
+    return { data: data as HostelComplaintType };
+  } catch (err: any) {
+    return { error: err.message || "Failed to submit hostel complaint" };
+  }
+}
+
+export async function updateHostelComplaintStatus(
+  id: number,
+  status: "Open" | "In Progress" | "Resolved" | "Rejected",
+  options?: {
+    rejection_reason?: string;
+    resolution_notes?: string;
+    assigned_to?: string;
+  },
+) {
+  try {
+    // Valid status transition validation
+    const validStatuses = ["Open", "In Progress", "Resolved", "Rejected"];
+    if (!validStatuses.includes(status)) {
+      return { error: `Invalid status: ${status}` };
+    }
+
+    const updates: Partial<HostelComplaintType> = {
+      status,
+      updated_at: new Date().toISOString(),
+      ...(options?.rejection_reason
+        ? { rejection_reason: options.rejection_reason }
+        : {}),
+      ...(options?.resolution_notes
+        ? { resolution_notes: options.resolution_notes }
+        : {}),
+      ...(options?.assigned_to ? { assigned_to: options.assigned_to } : {}),
+    };
+
+    const { data, error } = await supabase
+      .from("hostel_complaints")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return { data: data as HostelComplaintType };
+  } catch (err: any) {
+    return { error: err.message || "Failed to update complaint status" };
+  }
+}
+
+export async function deleteHostelComplaint(id: number) {
+  try {
+    const { error } = await supabase
+      .from("hostel_complaints")
+      .delete()
+      .eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
   }
 }

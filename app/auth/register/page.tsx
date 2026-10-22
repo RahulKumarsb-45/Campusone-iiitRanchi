@@ -1,11 +1,11 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { ArrowLeft, AtSign, Eye, EyeOff, Lock, Mail, User, Sparkles } from "lucide-react"
+import { ArrowLeft, AtSign, Eye, EyeOff, Lock, Mail, User, Sparkles, AlertCircle, RefreshCw, Loader2, CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,11 +17,15 @@ import { useAuth } from "@/contexts/auth-context"
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { signUp } = useAuth()
+  const { signUp, resendVerificationEmail } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [step, setStep] = useState(1)
   const [confirmationSent, setConfirmationSent] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [resendSuccess, setResendSuccess] = useState(false)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -34,12 +38,23 @@ export default function RegisterPage() {
     position: "",
   })
 
+  // Handle resend countdown cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isLoading) return
+    setFormError(null)
 
     if (step === 1) {
       if (!formData.name.trim() || !formData.email.trim() || !formData.password) {
+        setFormError("Please fill in all required fields to continue.")
         toast({
           title: "Missing fields",
           description: "Please fill in all required fields to continue.",
@@ -49,6 +64,7 @@ export default function RegisterPage() {
       }
 
       if (formData.password.length < 8) {
+        setFormError("Password must be at least 8 characters long.")
         toast({
           title: "Weak password",
           description: "Password must be at least 8 characters long.",
@@ -58,7 +74,6 @@ export default function RegisterPage() {
       }
 
       if (formData.role === "guest") {
-        // Guest does not require step 2 details
         proceedSignUp()
       } else {
         setStep(2)
@@ -71,6 +86,7 @@ export default function RegisterPage() {
 
   const proceedSignUp = async () => {
     setIsLoading(true)
+    setFormError(null)
 
     try {
       const userData: any = {
@@ -81,6 +97,7 @@ export default function RegisterPage() {
 
       if (formData.role === "student") {
         if (!formData.department.trim() || !formData.year.trim() || !formData.rollNumber.trim()) {
+          setFormError("Please provide your department, academic year, and roll number.")
           toast({
             title: "Missing academic details",
             description: "Please fill in department, academic year, and roll number.",
@@ -94,6 +111,7 @@ export default function RegisterPage() {
         userData.roll_number = formData.rollNumber.trim()
       } else if (formData.role === "faculty") {
         if (!formData.department.trim() || !formData.position.trim()) {
+          setFormError("Please provide your department and academic designation.")
           toast({
             title: "Missing academic details",
             description: "Please fill in department and academic position.",
@@ -109,6 +127,7 @@ export default function RegisterPage() {
       const result = await signUp(formData.email, formData.password, userData)
 
       if (result.error) {
+        setFormError(result.error)
         toast({
           title: "Registration Failed",
           description: result.error,
@@ -119,6 +138,7 @@ export default function RegisterPage() {
 
       if (result.requiresConfirmation) {
         setConfirmationSent(true)
+        setResendCooldown(60)
         toast({
           title: "Verification Email Sent",
           description: "Please check your inbox to confirm your email.",
@@ -133,13 +153,41 @@ export default function RegisterPage() {
 
       router.push("/dashboard")
     } catch (error: any) {
+      const msg = error?.message || "An unexpected error occurred. Please try again."
+      setFormError(msg)
       toast({
         title: "Registration Failed",
-        description: error?.message || "An unexpected error occurred. Please try again.",
+        description: msg,
         variant: "destructive",
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleResendEmail = async () => {
+    if (isResending || resendCooldown > 0) return
+    setIsResending(true)
+    setResendSuccess(false)
+    setFormError(null)
+
+    const res = await resendVerificationEmail(formData.email)
+    setIsResending(false)
+
+    if (res.error) {
+      setFormError(res.error)
+      toast({
+        title: "Could Not Resend Email",
+        description: res.error,
+        variant: "destructive",
+      })
+    } else {
+      setResendSuccess(true)
+      setResendCooldown(60)
+      toast({
+        title: "Verification Email Resent",
+        description: "A new confirmation email has been dispatched to your address.",
+      })
     }
   }
 
@@ -180,14 +228,77 @@ export default function RegisterPage() {
                     We sent a confirmation link to <span className="font-semibold text-foreground">{formData.email}</span>. Click the link to complete your account setup.
                   </p>
                 </div>
+
+                {formError && (
+                  <div className="rounded-lg bg-rose-50 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 p-3 text-left flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-rose-800 dark:text-rose-300 leading-snug">{formError}</p>
+                  </div>
+                )}
+
+                {resendSuccess && (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 p-3 text-left flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-snug">
+                      A fresh verification email has been sent. Please check your inbox and spam folder.
+                    </p>
+                  </div>
+                )}
+
                 <div className="pt-2 space-y-2">
-                  <Button asChild className="w-full bg-black text-white hover:bg-neutral-800">
+                  <Button asChild className="w-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black">
                     <Link href="/auth/login">Proceed to Sign In</Link>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full text-xs"
+                    onClick={handleResendEmail}
+                    disabled={isResending || resendCooldown > 0}
+                  >
+                    {isResending ? (
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Resending...
+                      </span>
+                    ) : resendCooldown > 0 ? (
+                      `Resend email in ${resendCooldown}s`
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Resend verification email
+                      </span>
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      setConfirmationSent(false)
+                      setStep(1)
+                      setFormError(null)
+                    }}
+                  >
+                    Change email or edit details
                   </Button>
                 </div>
               </CardContent>
             ) : (
               <CardContent className="p-6 pt-0">
+                {formError && (
+                  <div className="mb-4 rounded-lg bg-rose-50 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 p-3 text-left flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-rose-900 dark:text-rose-200">Registration Note</p>
+                      <p className="text-xs text-rose-800 dark:text-rose-300 leading-relaxed">{formError}</p>
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {step === 1 ? (
                     <>
@@ -200,7 +311,10 @@ export default function RegisterPage() {
                             placeholder="e.g. Priya Sharma"
                             className="pl-9"
                             value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            onChange={(e) => {
+                              setFormData({ ...formData, name: e.target.value })
+                              if (formError) setFormError(null)
+                            }}
                             required
                             disabled={isLoading}
                           />
@@ -217,7 +331,10 @@ export default function RegisterPage() {
                             placeholder="e.g. priya@iiitranchi.ac.in"
                             className="pl-9"
                             value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            onChange={(e) => {
+                              setFormData({ ...formData, email: e.target.value })
+                              if (formError) setFormError(null)
+                            }}
                             required
                             disabled={isLoading}
                           />
@@ -234,7 +351,10 @@ export default function RegisterPage() {
                             placeholder="Create password"
                             className="pl-9 pr-9"
                             value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            onChange={(e) => {
+                              setFormData({ ...formData, password: e.target.value })
+                              if (formError) setFormError(null)
+                            }}
                             required
                             minLength={8}
                             disabled={isLoading}
@@ -258,24 +378,38 @@ export default function RegisterPage() {
                           value={formData.role}
                           onValueChange={(val: any) => setFormData({ ...formData, role: val })}
                           className="grid grid-cols-3 gap-2"
+                          disabled={isLoading}
                         >
                           <div className="flex items-center space-x-2 rounded-lg border border-border p-2">
-                            <RadioGroupItem value="student" id="role-student" />
+                            <RadioGroupItem value="student" id="role-student" disabled={isLoading} />
                             <Label htmlFor="role-student" className="cursor-pointer text-xs font-semibold">Student</Label>
                           </div>
                           <div className="flex items-center space-x-2 rounded-lg border border-border p-2">
-                            <RadioGroupItem value="faculty" id="role-faculty" />
+                            <RadioGroupItem value="faculty" id="role-faculty" disabled={isLoading} />
                             <Label htmlFor="role-faculty" className="cursor-pointer text-xs font-semibold">Faculty</Label>
                           </div>
                           <div className="flex items-center space-x-2 rounded-lg border border-border p-2">
-                            <RadioGroupItem value="guest" id="role-guest" />
+                            <RadioGroupItem value="guest" id="role-guest" disabled={isLoading} />
                             <Label htmlFor="role-guest" className="cursor-pointer text-xs font-semibold">Guest</Label>
                           </div>
                         </RadioGroup>
                       </div>
 
-                      <Button type="submit" className="w-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-semibold mt-2">
-                        {formData.role === "guest" ? "Create Account" : "Next: Academic Details →"}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-semibold mt-2"
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Creating account...
+                          </span>
+                        ) : formData.role === "guest" ? (
+                          "Create Account"
+                        ) : (
+                          "Next: Academic Details →"
+                        )}
                       </Button>
                     </>
                   ) : (
@@ -288,8 +422,12 @@ export default function RegisterPage() {
                               id="department"
                               placeholder="e.g. Computer Science and Engineering"
                               value={formData.department}
-                              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                              onChange={(e) => {
+                                setFormData({ ...formData, department: e.target.value })
+                                if (formError) setFormError(null)
+                              }}
                               required
+                              disabled={isLoading}
                             />
                           </div>
                           <div className="space-y-2">
@@ -298,8 +436,12 @@ export default function RegisterPage() {
                               id="year"
                               placeholder="e.g. 2nd Year (2024-2028)"
                               value={formData.year}
-                              onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                              onChange={(e) => {
+                                setFormData({ ...formData, year: e.target.value })
+                                if (formError) setFormError(null)
+                              }}
                               required
+                              disabled={isLoading}
                             />
                           </div>
                           <div className="space-y-2">
@@ -308,8 +450,12 @@ export default function RegisterPage() {
                               id="rollNumber"
                               placeholder="e.g. 23BCS045"
                               value={formData.rollNumber}
-                              onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
+                              onChange={(e) => {
+                                setFormData({ ...formData, rollNumber: e.target.value })
+                                if (formError) setFormError(null)
+                              }}
                               required
+                              disabled={isLoading}
                             />
                           </div>
                         </>
@@ -323,8 +469,12 @@ export default function RegisterPage() {
                               id="department"
                               placeholder="e.g. Computer Science"
                               value={formData.department}
-                              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                              onChange={(e) => {
+                                setFormData({ ...formData, department: e.target.value })
+                                if (formError) setFormError(null)
+                              }}
                               required
+                              disabled={isLoading}
                             />
                           </div>
                           <div className="space-y-2">
@@ -333,15 +483,28 @@ export default function RegisterPage() {
                               id="position"
                               placeholder="e.g. Assistant Professor"
                               value={formData.position}
-                              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                              onChange={(e) => {
+                                setFormData({ ...formData, position: e.target.value })
+                                if (formError) setFormError(null)
+                              }}
                               required
+                              disabled={isLoading}
                             />
                           </div>
                         </>
                       )}
 
                       <div className="flex gap-2 pt-2">
-                        <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isLoading} className="flex-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setStep(1)
+                            setFormError(null)
+                          }}
+                          disabled={isLoading}
+                          className="flex-1"
+                        >
                           Back
                         </Button>
                         <Button
@@ -349,7 +512,14 @@ export default function RegisterPage() {
                           disabled={isLoading}
                           className="flex-1 bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black font-semibold"
                         >
-                          {isLoading ? "Creating..." : "Complete Signup"}
+                          {isLoading ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Creating...
+                            </span>
+                          ) : (
+                            "Complete Signup"
+                          )}
                         </Button>
                       </div>
                     </>

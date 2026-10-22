@@ -64,7 +64,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const resolvedParams = use(params)
   const eventId = Number.parseInt(resolvedParams.id, 10)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [event, setEvent] = useState<EventType | null>(null)
   const [loading, setLoading] = useState(true)

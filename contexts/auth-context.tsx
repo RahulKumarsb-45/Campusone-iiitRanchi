@@ -17,6 +17,7 @@ type AuthContextType = {
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signUp: (email: string, password: string, userData: Partial<UserType>) => Promise<SignUpResult>
+  resendVerificationEmail: (email: string) => Promise<{ error?: string; success?: boolean }>
   signOut: () => Promise<void>
   googleSignIn: () => Promise<void>
 }
@@ -31,19 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Helper to sync or create user profile in public.users using active authenticated session
   const syncUserProfile = async (sessionUser: any): Promise<UserType | null> => {
     try {
-      // 1. Attempt to fetch existing profile
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", sessionUser.id)
-        .maybeSingle()
-
-      if (existingProfile && !fetchError) {
-        return existingProfile as UserType
-      }
-
-      // 2. If profile does not exist, use session user metadata to create it
-      // Note: Because we have an active session, auth.uid() = sessionUser.id, which satisfies RLS
       const meta = sessionUser.user_metadata || {}
       const fallbackProfile: UserType = {
         id: sessionUser.id,
@@ -56,6 +44,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         position: meta.position || undefined,
       }
 
+      // 1. Attempt to fetch existing profile
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", sessionUser.id)
+        .maybeSingle()
+
+      if (existingProfile && !fetchError) {
+        return existingProfile as UserType
+      }
+
+      // 2. If profile does not exist, use session user metadata to create it
+      // Note: Because we have an active session, auth.uid() = sessionUser.id
       const { data: createdProfile, error: upsertError } = await supabase
         .from("users")
         .upsert([fallbackProfile], { onConflict: "id" })
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle()
 
       if (upsertError) {
-        console.warn("Could not upsert profile on sync:", upsertError.message)
+        console.warn("Could not upsert profile on sync (using in-memory metadata):", upsertError.message)
         return fallbackProfile
       }
 
@@ -160,12 +161,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         position: userData.position || null,
       }
 
+      const redirectUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback`
+          : undefined
+
       // Create Supabase Auth user
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
           data: userMetadata,
+          emailRedirectTo: redirectUrl,
         },
       })
 
@@ -176,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ) {
           return {
             error:
-              "Verification email rate limit exceeded. Please wait a few minutes before trying again.",
+              "Verification email rate limit exceeded. Supabase's default mail server limits verification emails per hour. Please wait a few minutes, or disable 'Confirm email' in Supabase Dashboard (Authentication -> Providers -> Email).",
           }
         }
         if (
@@ -185,6 +192,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ) {
           return {
             error: "An account with this email already exists. Please sign in instead.",
+          }
+        }
+        if (
+          error.message.includes("email_address_invalid") ||
+          error.message.includes("is invalid")
+        ) {
+          return {
+            error:
+              "This email address was rejected by the authentication server. Please check the address format or use your institute email.",
           }
         }
         return { error: error.message }
@@ -239,6 +255,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const resendVerificationEmail = async (email: string): Promise<{ error?: string; success?: boolean }> => {
+    try {
+      const cleanEmail = email.trim().toLowerCase()
+      if (!cleanEmail) {
+        return { error: "Please provide an email address." }
+      }
+
+      const redirectUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback`
+          : undefined
+
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      })
+
+      if (error) {
+        if (
+          error.message.includes("over_email_send_rate_limit") ||
+          error.message.includes("rate limit")
+        ) {
+          return {
+            error:
+              "Verification email rate limit exceeded. Please wait a few minutes before requesting another email.",
+          }
+        }
+        return { error: error.message }
+      }
+
+      return { success: true }
+    } catch (err: any) {
+      return { error: err.message || "Failed to resend verification email." }
+    }
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
     setUser(null)
@@ -255,7 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, googleSignIn }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, resendVerificationEmail, signOut, googleSignIn }}>
       {children}
     </AuthContext.Provider>
   )

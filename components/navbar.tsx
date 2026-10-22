@@ -24,6 +24,8 @@ import {
   Menu,
   X,
   Sparkles,
+  Bot,
+  Wrench,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -107,6 +109,12 @@ export function Navbar() {
       href: "/institute-services/hostel-notices",
       description: "Hostel allocations, mess updates, and regulations",
       icon: Building2,
+    },
+    {
+      title: "Hostel Complaints",
+      href: "/institute-services/hostel-complaints",
+      description: "Submit & track maintenance, electrical, and mess issues",
+      icon: Wrench,
     },
   ]
 
@@ -253,6 +261,22 @@ export function Navbar() {
               }`}
             >
               Clubs
+            </Link>
+
+            {/* AI Campus Assistant */}
+            <Link
+              href="/assistant"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                isActive("/assistant")
+                  ? "bg-black text-white dark:bg-white dark:text-black font-semibold"
+                  : "text-foreground/80 hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <Bot className="h-4 w-4" />
+              AI Assistant
+              <span className="rounded bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.2 text-[10px] font-bold text-foreground">
+                AI
+              </span>
             </Link>
           </nav>
         </div>
@@ -481,6 +505,24 @@ export function Navbar() {
             >
               <Users className="h-4 w-4" />
               Clubs
+            </Link>
+
+            <Link
+              href="/assistant"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${
+                isActive("/assistant")
+                  ? "bg-black text-white dark:bg-white dark:text-black font-semibold"
+                  : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Bot className="h-4 w-4" />
+                AI Assistant
+              </span>
+              <span className="rounded bg-neutral-200 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold">
+                AI
+              </span>
             </Link>
 
             <Link

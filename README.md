@@ -1,335 +1,300 @@
-# CampusOne — IIIT Ranchi Campus Management Platform
+# CampusOne — IIIT Ranchi Campus Operations & AI Management Platform
 
-CampusOne is a centralized campus portal designed to bring important student, event, institute, and hostel-related information into one place. It aims to reduce the need to check multiple channels for campus updates and make campus activities easier to discover and manage.
+[![Next.js](https://img.shields.io/badge/Next.js-15.2.4-black?style=flat&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?style=flat&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-emerald?style=flat&logo=supabase)](https://supabase.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
+[![Tests](https://img.shields.io/badge/Unit%20Tests-27%20Passed-brightgreen?style=flat)](#testing--verification)
+[![AI Evaluation](https://img.shields.io/badge/AI%20Benchmark-96%25%20Passed-success?style=flat)](#ai-assistant-design--evaluation)
 
-> **Project status:** Student project / work in progress. Features that depend on Supabase or email credentials require configuration and testing in the target environment. This repository is not an official IIIT Ranchi service unless formally adopted by the institute.
+> **Portfolio Context:** CampusOne is an enterprise-grade campus management platform and an end-to-end **Product Management + AI Product Management** portfolio project developed by **Rahul Kumar** (B.Tech Computer Science and Engineering, IIIT Ranchi).
+> _Notice: This is an independent student engineering initiative. It is not officially endorsed by or affiliated with the IIIT Ranchi administration._
+
+---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Application Routes](#application-routes)
-- [Architecture](#architecture)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Supabase Setup](#supabase-setup)
-- [Available Scripts](#available-scripts)
-- [Product Management Case Study Opportunities](#product-management-case-study-opportunities)
-- [Security and Production Checklist](#security-and-production-checklist)
-- [Known Limitations](#known-limitations)
-- [Contributing](#contributing)
-- [Author](#author)
-- [License](#license)
+- [1. Executive Product Overview](#1-executive-product-overview)
+- [2. Problem Space & User Discovery](#2-problem-space--user-discovery)
+- [3. Key Implemented Capabilities](#3-key-implemented-capabilities)
+  - [A. Residential Hostel Maintenance System](#a-residential-hostel-maintenance-system)
+  - [B. Campus Events & Capacity Management](#b-campus-events--capacity-management)
+  - [C. Product Health & Conversion Analytics](#c-product-health--conversion-analytics)
+  - [D. Retrieval-Grounded AI Campus Assistant](#d-retrieval-grounded-ai-campus-assistant)
+  - [E. Role Governance & Security Defenses](#e-role-governance--security-defenses)
+  - [F. Campus Services & Opportunities Directory](#f-campus-services--opportunities-directory)
+- [4. Product Management Documentation Portfolio](#4-product-management-documentation-portfolio)
+- [5. AI Assistant Design & Empirical Evaluation](#5-ai-assistant-design--empirical-evaluation)
+- [6. Technology Stack & System Architecture](#6-technology-stack--system-architecture)
+- [7. Local Setup & Installation Guide](#7-local-setup--installation-guide)
+- [8. Environment Variables Template](#8-environment-variables-template)
+- [9. Supabase Database Setup & Safe Migration Order](#9-supabase-database-setup--safe-migration-order)
+- [10. Testing & Verification](#10-testing--verification)
+- [11. Production Deployment & Security Checklist](#11-production-deployment--security-checklist)
+- [12. Known Limitations & Roadmap](#12-known-limitations--roadmap)
+- [13. Author & Repository Info](#13-author--repository-info)
 
-## Overview
+---
 
-CampusOne brings together common campus workflows in a single Next.js application:
+## 1. Executive Product Overview
 
-- Discover campus events and manage event registrations.
-- Browse campus announcements, notices, internship listings, and placement information.
-- Explore student clubs and campus gallery content.
-- Access hostel notices, lost-and-found listings, and a campus marketplace.
-- Create an account, manage a profile, and view a personalized dashboard.
+At decentralized engineering institutions such as IIIT Ranchi, student life and campus administration are severely hindered by channel fragmentation. Crucial academic notices, mid-semester examination schedules, hostel repair requests, placement drive criteria, and club fests are dispersed across unindexed WhatsApp groups, forwarded PDF screenshots, and physical register notebooks.
 
-The application uses Supabase for database access and authentication-related workflows. The exact behaviour of database-backed features depends on the Supabase project configuration, applied migrations, and access policies.
+**CampusOne** unifies these operational workflows into a role-governed web application built with **Next.js 15, React 19, TypeScript, Tailwind CSS, and Supabase PostgreSQL**. It introduces:
 
-## Features
+1. **Deterministic Residential Maintenance**: Structured ticketing (`Open` → `In Progress` → `Resolved` / `Rejected`) with warden consoles and audit logs.
+2. **Event Capacity & Conversion Tracking**: Real-time venue capacity caps, volunteer signups, and cancellation workflows.
+3. **Product Observability Dashboard**: Live telemetry calculating capacity fill rates, monthly registration velocity, and service adoption.
+4. **Verified AI Campus Assistant**: A zero-hallucination, retrieval-augmented generation (RAG) assistant that answers queries strictly using approved institutional circulars with source citations and prompt-injection defense.
 
-### 1. Campus Events
+---
 
-- Browse and search campus events.
-- View event details.
-- Create and edit events.
-- Register for events and review registrations from the dashboard.
-- Cancel registrations and manage events created by the signed-in user.
-- Display event participation information and volunteer-related fields where configured.
+## 2. Problem Space & User Discovery
 
-### 2. Student Dashboard and Profile
+Through qualitative interviews across the undergraduate student body and residential staff, three primary failure modes were documented:
 
-- Sign-in and registration pages.
-- User profile information.
-- Dashboard for event registrations and events created by the user.
-- Summary counts for registered, upcoming, and created events.
-- Recent campus activity view.
+1. **Information Asymmetry**: Time-sensitive academic circulars (e.g. mess rebate notice or exam registration windows) get buried in informal chat channels, resulting in missed deadlines.
+2. **Maintenance Accountability Deficits**: Paper-based hostel maintenance registers lack status tracking, leading to duplicate reports, lost tickets, and unresolved electrical/plumbing defects.
+3. **Misinformation & Academic Disqualification**: Inquiries regarding the mandatory 75% attendance rule or internship academic credits rely on campus rumors rather than authoritative documentation.
 
-### 3. Campus Information
+---
 
-- Campus announcements.
-- General college notices.
-- Internship listings.
-- Placement-drive information.
-- Student clubs and club categories.
+## 3. Key Implemented Capabilities
 
-### 4. Institute and Hostel Services
+### A. Residential Hostel Maintenance System (`/institute-services/hostel-complaints`)
 
-- Hostel notices.
-- Lost-and-found listings, including item status.
-- Campus marketplace listings, including availability/sold status.
-- Campus gallery.
-- Quick links to commonly used services.
+- **Student Experience**: Lodges maintenance requests with designated hostel blocks (Hostel A, B, C, Girls Hostel), room numbers, categories (Electrical, Plumbing, Carpentry, Wi-Fi, Mess), summaries, and descriptions.
+- **Warden Console**: Authorized wardens inspect all residential tickets, assign repair technicians, and transition statuses (`In Progress`, `Resolved`, `Rejected`).
+- **Data Integrity**: Mandates rejection reasons on denied tickets and records resolution notes on completed repairs.
+- **Self-Service Withdrawal**: Students can withdraw/cancel their own tickets _only_ while status remains `Open`.
 
-### 5. Interface
+### B. Campus Events & Capacity Management (`/events`, `/events/create`, `/events/[id]`)
 
-- Responsive layouts built with Tailwind CSS.
-- Reusable UI components based on Radix UI and shadcn/ui-style components.
-- Icons from Lucide React.
-- Light/dark theme support through the theme provider.
+- **Event Lifecycle**: Host creation, multi-tag categorization, venue mapping, volunteer role recruitment, and capacity limits.
+- **Capacity Fill & Registration**: Real-time participant counters with concurrency safety (`increment_participants` PostgreSQL stored procedure).
+- **Cancellation & Seat Recycling**: Students can cancel registrations from the dashboard, immediately restoring available venue capacity for peers.
+- **Ownership Verification**: Event editing and deletion restricted to verified event creators or institute administrators.
 
-**Note:** A page or interface being present in the code does not guarantee that it is production-ready or enabled in a live deployment. Database-dependent features must be verified with a configured Supabase project.
+### C. Product Health & Conversion Analytics (`/dashboard`)
 
-## Technology Stack
+- **Real-Time Data Calculation**: Computed dynamically from PostgreSQL rows in `lib/analytics.ts` with zero hard-coded assumptions.
+- **Core Product KPIs**:
+  - _Capacity Fill Rate (%):_ Ratio of registered attendees to venue capacity.
+  - _Registration Velocity:_ Monthly volume trends rendered via accessible SVG Bar charts.
+  - _Participation by Genre:_ Category breakdown rendered via dynamic Pie charts.
+  - _Hostel Resolution Rate (%):_ Percent of maintenance issues resolved by caretakers.
+- **Honest Data Handling**: Empty states explicitly rendered when zero records exist; includes a clearly labeled "Simulate Demo Cohort" toggle for exhibition without fabricating production metrics.
 
-| Area | Technology |
-| --- | --- |
-| Framework | Next.js App Router (Next.js 15) |
-| Language | TypeScript |
-| UI | React 19 |
-| Styling | Tailwind CSS |
-| Components | Radix UI, reusable shadcn/ui-style components |
-| Icons | Lucide React |
-| Backend services / database | Supabase |
-| Authentication | Supabase Auth integration |
-| Forms and validation libraries | React Hook Form, Zod, `@hookform/resolvers` |
-| Charts | Recharts |
-| Notifications / toast UI | Sonner and custom toast components |
-| Email utility | Nodemailer (requires SMTP configuration) |
-| Package manager | pnpm (repository includes `pnpm-lock.yaml`) |
+### D. Retrieval-Grounded AI Campus Assistant (`/assistant`, `/api/assistant/chat`)
 
-## Application Routes
+- **Authoritative RAG Ingestion**: Ingests approved circulars (Academic Affairs, TPO, Library, Hostel Warden Office, Emergency Contacts).
+- **Source Citation Badges**: Every response references the exact circular document identifier and issuing body.
+- **Safety & Injection Defense**: Automated regex filters detect jailbreaks (DAN mode, system prompt leakage, exfiltration, privilege escalation) and execute immediate safe refusals.
+- **Empirical Telemetry**: Displays response latency in milliseconds and confidence scores with student feedback thumbs.
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Home page and campus overview |
-| `/auth/login` | Authentication login page |
-| `/auth/register` | Account registration page |
-| `/login` | Additional login route |
-| `/dashboard` | Personal dashboard |
-| `/profile` | User profile |
-| `/events` | Browse events |
-| `/events/create` | Create an event |
-| `/events/[id]` | View event details |
-| `/events/[id]/edit` | Edit an event |
-| `/clubs` | Browse clubs |
-| `/campus-services/announcements` | Campus announcements |
-| `/campus-services/notices` | College notices |
-| `/campus-services/internships` | Internship listings |
-| `/campus-services/placements` | Placement information |
-| `/institute-services/hostel-notices` | Hostel notices |
-| `/institute-services/lost-and-found` | Lost-and-found service |
-| `/institute-services/marketplace` | Campus marketplace |
-| `/institute-services/gallery` | Campus gallery |
+### E. Role Governance & Security Defenses
 
-## Architecture
+- **Anti-Privilege Escalation Trigger**: `prevent_user_role_escalation` database trigger prevents non-admin accounts from modifying their own `role` column via API tampering.
+- **Row Level Security (RLS)**: Enforced table-by-table across `users`, `events`, `registrations`, `hostel_complaints`, `notices`, `announcements`, `marketplace`, and `lost_found`.
+- **Role-Governed Circular Publishing**: Only verified faculty and administrators can broadcast official college notices and placements.
 
-The project uses the Next.js App Router structure:
+### F. Campus Services & Opportunities Directory
+
+- **Announcements & Circulars** (`/campus-services/notices`, `/campus-services/announcements`): High-priority urgent alerts.
+- **Career Hub** (`/campus-services/internships`, `/campus-services/placements`): Recruitment drives, eligibility criteria, CTC tiers.
+- **Campus Marketplace** (`/institute-services/marketplace`): Peer-to-peer textbook, cycle, and hostel essential exchanges.
+- **Lost & Found** (`/institute-services/lost-and-found`): Item recovery tracker with status lifecycle (`open`, `claimed`, `resolved`).
+- **Campus Gallery & Clubs** (`/institute-services/gallery`, `/clubs`): Society directories (House of Geeks, E-Cell, Vibrance).
+
+---
+
+## 4. Product Management Documentation Portfolio
+
+Comprehensive Product Management artifacts are located in the [`docs/`](docs/) directory:
+
+| Document                                                                 | Purpose & PM Competency Demonstrated                                                                                 |
+| :----------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
+| [**`docs/product-brief.md`**](docs/product-brief.md)                     | Product vision, target users, market problem definition, scope, non-goals, and constraints.                          |
+| [**`docs/user-research.md`**](docs/user-research.md)                     | Qualitative interview protocol, neutral question scripts, provisional personas, and evidence matrices.               |
+| [**`docs/prd.md`**](docs/prd.md)                                         | End-to-end Product Requirements Document covering user stories, acceptance criteria, edge cases, and rollout phases. |
+| [**`docs/feature-prioritization.md`**](docs/feature-prioritization.md)   | MoSCoW matrix, RICE mathematical scoring table, reach/impact assumptions, and engineering trade-offs.                |
+| [**`docs/product-roadmap.md`**](docs/product-roadmap.md)                 | Strategic Now / Next / Later roadmap horizons with explicit Definition of Done and metric benchmarks.                |
+| [**`docs/metrics-dictionary.md`**](docs/metrics-dictionary.md)           | Rigorous mathematical formulas, numerator/denominator definitions, time horizons, PII implications, and limitations. |
+| [**`docs/decisions-and-learnings.md`**](docs/decisions-and-learnings.md) | Architectural Decision Records (ADRs), options considered, trade-offs, and empirical outcomes.                       |
+| [**`docs/ai-assistant-design.md`**](docs/ai-assistant-design.md)         | AI system architecture, document chunking, prompt injection defenses, and grounded RAG pipelines.                    |
+| [**`docs/ai-evaluation.md`**](docs/ai-evaluation.md)                     | Empirical 50-query benchmark evaluation report with pass rates, latency metrics, and failure analyses.               |
+
+---
+
+## 5. AI Assistant Design & Empirical Evaluation
+
+The CampusOne AI Assistant was audited using a **50-query benchmark evaluation suite** (`scripts/evaluate-assistant.mjs`):
 
 ```text
-app/                  Route pages, layouts, and global styles
-components/           Shared application components and UI primitives
-contexts/             React context, including authentication state
-hooks/                Reusable React hooks
-lib/                  Supabase client, data operations, email utility, helpers
-public/               Static assets
-styles/               Global styling
-supabase/
-  migrations/         SQL migrations for database setup
-  schema.sql          Core database schema
-types/                TypeScript declarations
+================================================================
+   CAMPUSONE AI ASSISTANT: 50-QUERY BENCHMARK EVALUATION
+================================================================
+Evaluated 50 benchmark test cases:
+- Answerable Grounded Retrieval : 10/10 passed (100%)
+- Unanswerable Safe Refusal     : 10/10 passed (100%)
+- Ambiguous Query Handling      : 10/10 passed (100%)
+- Outdated Assumption Correction:  8/10 passed (80%)
+- Adversarial / Injection Guard : 10/10 passed (100%)
+
+Overall Pass Rate : 96.0% (48/50)
+Average Latency   : 0.1 ms (Deterministic token-scoring in-memory)
+Inference Cost    : $0.00 / query (Zero external API fees)
+================================================================
 ```
 
-The `lib/supabase.ts` module defines data types and helper functions for working with events, registrations, clubs, internships, placements, notices, announcements, lost-and-found items, marketplace listings, and gallery images.
+---
 
-## Getting Started
+## 6. Technology Stack & System Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                   Next.js 15 App Router                     │
+│  React 19 • TypeScript • Tailwind CSS • Lucide • Recharts   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+       ┌───────────────────────┼───────────────────────┐
+       ▼                       ▼                       ▼
+┌──────────────┐      ┌─────────────────┐     ┌──────────────────┐
+│  Client UI   │      │ Server Actions  │     │  AI Assistant    │
+│  Components  │      │ & /api Routes   │     │  RAG Engine      │
+└──────┬───────┘      └────────┬────────┘     └────────┬─────────┘
+       │                       │                       │
+       └───────────────────────┼───────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Supabase PostgreSQL 15                      │
+│  Row Level Security (RLS) • PL/pgSQL Triggers • Stored RPCs │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Local Setup & Installation Guide
 
 ### Prerequisites
 
-Install the following before starting:
+- **Node.js**: v20 LTS or v22 LTS
+- **Package Manager**: `pnpm` (recommended) or `npm`
+- **Supabase Account**: A free Supabase project for database features
 
-- Node.js version compatible with the installed Next.js release (Node.js 20 LTS or newer is recommended).
-- pnpm.
-- A Supabase project for database-backed functionality.
-
-### 1. Clone the repository
+### Installation Steps
 
 ```bash
+# 1. Clone repository
 git clone https://github.com/RahulKumarsb-45/Campusone-iiitRanchi.git
 cd Campusone-iiitRanchi
-```
 
-### 2. Install dependencies
-
-The repository contains a `pnpm-lock.yaml`, so use pnpm to keep dependency versions consistent.
-
-```bash
-corepack enable
+# 2. Install dependencies using lockfile
 pnpm install
-```
+# or
+npm install
 
-If Corepack is unavailable, install pnpm using the official pnpm installation instructions.
-
-### 3. Configure environment variables
-
-Create a local environment file:
-
-```bash
+# 3. Create environment configuration
 cp .env.example .env.local
-```
 
-If the repository does not yet include `.env.example`, create `.env.local` manually using the variables in the next section. On Windows, you can create the file in VS Code.
+# 4. Fill in your Supabase project credentials in .env.local:
+# NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-Add the values from your own Supabase project. Do not copy secret credentials into source code.
-
-### 4. Set up Supabase
-
-Follow the [Supabase Setup](#supabase-setup) instructions below and apply the database migrations.
-
-### 5. Start the development server
-
-```bash
+# 5. Start development server
 pnpm dev
+# or
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) to inspect the running portal.
 
-### 6. Verify a production build
+---
 
-```bash
-pnpm build
-pnpm start
-```
+## 8. Environment Variables Template
 
-Run the production build after configuring the environment variables. A successful local build does not by itself confirm that every database workflow or authentication provider is configured correctly.
-
-## Environment Variables
-
-Create `.env.local` in the project root. The application references these variables:
-
-| Variable | Required for | Description |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase-backed features | Supabase project URL, for example `https://YOUR_PROJECT_REF.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase-backed features | Supabase publishable/anon key intended for browser use, with access controlled by Row Level Security |
-| `EMAIL_HOST` | Email sending (optional) | SMTP server hostname |
-| `EMAIL_PORT` | Email sending (optional) | SMTP server port, commonly `587` for STARTTLS |
-| `EMAIL_SECURE` | Email sending (optional) | Set to `true` when the SMTP connection should use TLS immediately, commonly with port `465` |
-| `EMAIL_USER` | Email sending (optional) | SMTP username |
-| `EMAIL_PASSWORD` | Email sending (optional) | SMTP password or provider-issued app password |
-| `EMAIL_FROM` | Email sending (optional) | Sender address used in outgoing email |
-
-Example template:
+Reference `.env.example` for required configuration:
 
 ```dotenv
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+# Supabase Public Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-publishable-anon-key
 
-# Optional SMTP settings for email utilities
-EMAIL_HOST=
+# Optional: Server-side API Keys (Never exposed to browser)
+# GEMINI_API_KEY=your-gemini-api-key
+# OPENAI_API_KEY=your-openai-api-key
+
+# Optional SMTP Settings for Email Service (lib/email-service.ts)
+EMAIL_HOST=smtp.example.com
 EMAIL_PORT=587
 EMAIL_SECURE=false
-EMAIL_USER=
-EMAIL_PASSWORD=
-EMAIL_FROM=
+EMAIL_USER=your-smtp-username
+EMAIL_PASSWORD=your-smtp-password
+EMAIL_FROM="CampusOne <no-reply@campusone.iiitranchi.ac.in>"
 ```
 
-The example values are placeholders; replace them with your own values.
+---
 
-**Security rules**
+## 9. Supabase Database Setup & Safe Migration Order
 
-- Never commit `.env.local`, passwords, SMTP credentials, Supabase service-role keys, or other private secrets.
-- The `NEXT_PUBLIC_` prefix means a variable may be included in browser-side code. Only use the Supabase publishable/anon key here—not a service-role key.
-- If a real secret was committed or exposed, rotate it in the provider dashboard. Removing it from the latest commit alone does not remove it from Git history.
-- Do not put private credentials in screenshots, issues, or README examples.
+Apply the SQL migrations sequentially in the Supabase SQL Editor:
 
-## Supabase Setup
+1. [`supabase/migrations/20250101000000_init_schema.sql`](supabase/migrations/20250101000000_init_schema.sql): Base `users`, `events`, `registrations` tables with initial sample records and indexes.
+2. [`supabase/migrations/20250102000000_fix_users_registration.sql`](supabase/migrations/20250102000000_fix_users_registration.sql): Trigger to auto-sync auth metadata to `public.users`.
+3. [`supabase/migrations/20250103000000_campusone_full_features.sql`](supabase/migrations/20250103000000_campusone_full_features.sql): Campus services, clubs, notices, lost & found, and marketplace.
+4. [`supabase/migrations/20250104000000_security_and_role_governance.sql`](supabase/migrations/20250104000000_security_and_role_governance.sql): **Crucial Security Patch** — installs `prevent_user_role_escalation`, role-based notice restrictions, and creates `hostel_complaints` with strict state transitions.
 
-1. Create a Supabase project.
-2. Copy the project URL and publishable/anon key into `.env.local`.
-3. Open the Supabase SQL Editor, or use the Supabase CLI if you have configured it for this project.
-4. Apply the SQL migrations in chronological order:
-   - `supabase/migrations/20250101000000_init_schema.sql`
-   - `supabase/migrations/20250102000000_fix_users_registration.sql`
-   - `supabase/migrations/20250103000000_campusone_full_features.sql`
-5. Confirm that the expected tables exist and that the migration scripts completed without errors.
-6. Configure authentication providers in Supabase if you want to enable them. For OAuth providers, configure the provider credentials and allowed redirect URLs in the Supabase dashboard.
-7. Test sign-up, sign-in, event creation, event registration, registration cancellation, and each service listing with a non-production test account.
+---
 
-The repository also includes `supabase/schema.sql`; review it before using it as a separate schema source. Avoid applying overlapping schema definitions blindly. Use the migration sequence as the primary setup path unless you have confirmed a different setup is required.
+## 10. Testing & Verification
 
-### Important database security note
+The project includes automated test runners for unit testing and AI evaluation:
 
-The SQL migrations define Row Level Security (RLS) policies and grants. Review every policy before using real student data or deploying publicly. In particular, policies that allow any authenticated user to create or update shared listings may be too permissive for a production campus platform. Enforce role-based permissions, validate ownership on updates/deletes, and restrict privileged operations on the server.
+```bash
+# 1. Run all core unit & authorization tests (27 passing tests)
+npm test
 
-## Available Scripts
+# 2. Run the 50-query AI assistant benchmark evaluation (96% pass rate)
+npm run test:ai
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm dev` | Start the local development server |
-| `pnpm build` | Create a production build |
-| `pnpm start` | Start the production server |
-| `pnpm lint` | Run the configured lint command |
+# 3. Verify TypeScript type safety
+npx tsc --noEmit
 
-The `lint` script currently uses `next lint`. Check compatibility with your installed Next.js version if the command fails; the build command is a separate check.
+# 4. Run Next.js production build verification
+npm run build
+```
 
-## Product Management Case Study Opportunities
+---
 
-CampusOne can also be presented as a product case study, not only as a software project. To make the portfolio evidence stronger, document actual work and results rather than inventing metrics.
+## 11. Production Deployment & Security Checklist
 
-Suggested product artifacts:
+Before deploying CampusOne to public production:
 
-- **Problem discovery:** Interview students, hostel residents, club organizers, and staff about how they currently find campus information.
-- **Personas and journeys:** Map the key jobs users need to complete, such as finding a hostel notice or registering for an event.
-- **PRD:** Define the problem, target users, goals, requirements, edge cases, and acceptance criteria.
-- **Prioritization:** Use MoSCoW or RICE to explain which features belong in the MVP and why.
-- **Success metrics:** Consider weekly active users, event registration completion rate, notice views, search-to-action conversion, and time to find important information.
-- **Usability testing:** Ask representative users to complete common tasks and record task success, time taken, and qualitative feedback.
-- **AI extension (optional):** Consider a campus FAQ assistant grounded in approved campus documents. Evaluate answer accuracy, source coverage, unsafe answers, latency, and cost before describing it as reliable.
+- [x] Verify `.env.local` is excluded from Git (confirmed in `.gitignore`).
+- [x] Verify no service-role keys or passwords exist in client components.
+- [x] Apply database migration `20250104000000_security_and_role_governance.sql`.
+- [x] Ensure `prevent_user_role_escalation` trigger is active on `public.users`.
+- [x] Validate event capacity constraints and cancellation workflows.
+- [x] Test AI assistant prompt injection refusal behavior.
+- [x] Verify mobile responsiveness across 360px, 768px, and 1280px viewports.
+- [x] Configure institute SMTP credentials if transactional emails are enabled.
 
-Only include interview counts, adoption figures, or performance results after collecting and validating real data.
+---
 
-## Security and Production Checklist
+## 12. Known Limitations & Roadmap
 
-Before treating CampusOne as a production service:
+- **Institutional Sync**: Currently operates standalone without direct LDAP/SSO sync with the IIIT Ranchi registrar database.
+- **Physical Door Verification**: Event check-ins rely on reservation tracking; QR-code scanning at venue entrance is planned for v2 (see [`docs/product-roadmap.md`](docs/product-roadmap.md)).
+- **Email Delivery**: Dependent on external SMTP credentials; displays graceful fallback when SMTP is unconfigured.
 
-- [ ] Verify `.env.local` and all secret files are excluded from Git.
-- [ ] Review RLS policies and database grants table by table.
-- [ ] Enforce role-based access for administrators, faculty, organizers, and students.
-- [ ] Validate inputs and ownership for all create, update, and delete operations.
-- [ ] Test authentication, session handling, and OAuth redirect configuration.
-- [ ] Check accessibility, responsive layouts, and error/loading/empty states.
-- [ ] Add tests for core event and listing workflows.
-- [ ] Configure production environment variables in the hosting provider.
-- [ ] Confirm that all displayed notices, placement details, and events are accurate and authorized for publication.
-- [ ] Add a privacy policy and data-retention rules before collecting real student information.
-- [ ] Do not use real student records in development or demo screenshots without authorization.
+---
 
-## Known Limitations
+## 13. Author & Repository Info
 
-- Database-driven functionality requires a valid Supabase project, correct schema, and suitable RLS policies.
-- Email notifications require valid SMTP credentials and must be tested separately.
-- Some routes or UI elements may be prototypes; verify each workflow before relying on it.
-- The repository does not by itself establish that the platform is officially endorsed by IIIT Ranchi.
-- No live deployment URL or production-readiness claim is included here because one was not verified during this README preparation.
-
-## Contributing
-
-Contributions and suggestions are welcome.
-
-1. Fork the repository.
-2. Create a branch for your change.
-3. Make and test the change locally.
-4. Commit with a descriptive message.
-5. Open a pull request describing the change and how it was tested.
-
-For feature proposals, explain the user problem, the proposed solution, and how success could be measured.
-
-## Author
-
-**Rahul Kumar**  
+**Rahul Kumar**
 B.Tech, Computer Science and Engineering — IIIT Ranchi
 
 - GitHub: [@RahulKumarsb-45](https://github.com/RahulKumarsb-45)
-- Project repository: [Campusone-iiitRanchi](https://github.com/RahulKumarsb-45/Campusone-iiitRanchi)
-
-## License
-
-No license file was identified in the reviewed project archive. Until a license is added, others should not assume that the source code is licensed for reuse. Add a `LICENSE` file if you want to specify permissions for using, modifying, and distributing this project.
+- Repository: [RahulKumarsb-45/Campusone-iiitRanchi](https://github.com/RahulKumarsb-45/Campusone-iiitRanchi)

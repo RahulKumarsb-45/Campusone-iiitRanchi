@@ -21,7 +21,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   const resolvedParams = use(params)
   const eventId = Number.parseInt(resolvedParams.id, 10)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,6 +53,17 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
   useEffect(() => {
     async function load() {
+      if (authLoading) return
+
+      if (!user) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to edit events.",
+        })
+        router.push(`/auth/login?next=/events/${eventId}/edit`)
+        return
+      }
+
       if (isNaN(eventId)) {
         setLoading(false)
         return
@@ -69,7 +80,10 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       }
 
       // Check authorization: must be creator or admin/faculty
-      if (user && ev.user_id && ev.user_id !== user.id && user.role !== "admin" && user.role !== "faculty") {
+      const isCreator = ev.user_id === user.id
+      const isPrivileged = user.role === "admin" || user.role === "faculty"
+
+      if (!isCreator && !isPrivileged) {
         toast({
           title: "Unauthorized",
           description: "You do not have permission to edit this event.",

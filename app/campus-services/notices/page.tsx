@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchNotices, createNotice, type NoticeType } from "@/lib/supabase"
+import { fetchNotices, createNotice, isStaffOrAdmin, type NoticeType } from "@/lib/supabase"
 
 export default function CollegeNoticesPage() {
   const { user } = useAuth()
@@ -67,6 +67,16 @@ export default function CollegeNoticesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+
+    if (!isStaffOrAdmin(user.role)) {
+      toast({
+        title: "Permission Denied",
+        description: "Only verified faculty and administrative staff may publish official college notices.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -115,7 +125,7 @@ export default function CollegeNoticesPage() {
           </p>
         </div>
 
-        {user && (
+        {user && isStaffOrAdmin(user.role) && (
           <Button
             onClick={() => setShowAddModal(true)}
             className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black gap-1.5"

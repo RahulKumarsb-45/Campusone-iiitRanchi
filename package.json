@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --experimental-strip-types scripts/run-all-tests.mjs",
+    "test:ai": "node --experimental-strip-types scripts/evaluate-assistant.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
