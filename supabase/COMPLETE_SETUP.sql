@@ -41,24 +41,34 @@ create table if not exists public.users (
 
 alter table public.users enable row level security;
 
--- Users policies
+-- Users policies: protect sensitive contact info, allow users to view own profile or staff/admin to view all
 drop policy if exists "Users are viewable by everyone" on public.users;
-create policy "Users are viewable by everyone"
-  on public.users for select
-  using (true);
-
+drop policy if exists "Users can view their own profile" on public.users;
+drop policy if exists "Users view own profile or admin views all" on public.users;
 drop policy if exists "Users can insert their own profile" on public.users;
+drop policy if exists "Users can update their own profile" on public.users;
+drop policy if exists "Admins can delete user profiles" on public.users;
+
+create policy "Users view own profile or admin views all"
+  on public.users for select
+  to authenticated
+  using (auth.uid() = id or public.is_staff_or_admin());
+
 create policy "Users can insert their own profile"
   on public.users for insert
   to authenticated
-  with check (auth.uid() = id);
+  with check (auth.uid() = id or public.is_admin());
 
-drop policy if exists "Users can update their own profile" on public.users;
 create policy "Users can update their own profile"
   on public.users for update
   to authenticated
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
+  using (auth.uid() = id or public.is_admin())
+  with check (auth.uid() = id or public.is_admin());
+
+create policy "Admins can delete user profiles"
+  on public.users for delete
+  to authenticated
+  using (public.is_admin());
 
 grant select, insert, update on table public.users to authenticated;
 grant select on table public.users to anon;
@@ -67,33 +77,79 @@ grant select on table public.users to anon;
 -- 4. ROLE GOVERNANCE & PROFILE AUTO-SYNC TRIGGERS
 -- ------------------------------------------------------------------------------
 
--- Helper: Check if active user is admin
+-- Helper: Check if active user is admin (non-recursive, explicit search_path)
 create or replace function public.is_admin()
-returns boolean as $$
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  _role text;
 begin
-  return exists (
-    select 1 from public.users
-    where id = auth.uid()
-      and role = 'admin'
-  );
+  if auth.uid() is null then
+    return false;
+  end if;
+  select role into _role from public.users where id = auth.uid();
+  return _role = 'admin';
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- Helper: Check if active user is staff or admin
 create or replace function public.is_staff_or_admin()
-returns boolean as $$
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  _role text;
 begin
-  return exists (
-    select 1 from public.users
-    where id = auth.uid()
-      and role in ('admin', 'faculty', 'organizer')
-  );
+  if auth.uid() is null then
+    return false;
+  end if;
+  select role into _role from public.users where id = auth.uid();
+  return _role in ('admin', 'faculty', 'organizer');
 end;
-$$ language plpgsql security definer;
+$$;
+
+grant execute on function public.is_admin() to anon, authenticated;
+grant execute on function public.is_staff_or_admin() to anon, authenticated;
+
+-- Admin Bootstrap Procedure (database owner / service_role only)
+create or replace function public.bootstrap_admin(admin_email text)
+returns text
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  target_user_id uuid;
+begin
+  select id into target_user_id from auth.users where lower(email) = lower(admin_email);
+  if target_user_id is null then
+    return 'ERROR: User with email ' || admin_email || ' does not exist in auth.users. Please sign up first.';
+  end if;
+
+  insert into public.users (id, email, name, role)
+  values (target_user_id, admin_email, split_part(admin_email, '@', 1), 'admin')
+  on conflict (id) do update set
+    role = 'admin';
+
+  return 'SUCCESS: User ' || admin_email || ' (' || target_user_id || ') is now an active administrator.';
+end;
+$$;
+
+revoke execute on function public.bootstrap_admin(text) from public, anon, authenticated;
+grant execute on function public.bootstrap_admin(text) to postgres, service_role;
 
 -- Prevent users from escalating their own role to 'admin' or 'faculty'
 create or replace function public.prevent_user_role_escalation()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
   if (old.role is distinct from new.role) then
     if not public.is_admin() then
@@ -102,7 +158,7 @@ begin
   end if;
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 drop trigger if exists trg_prevent_user_role_escalation on public.users;
 create trigger trg_prevent_user_role_escalation
@@ -110,16 +166,21 @@ create trigger trg_prevent_user_role_escalation
   for each row
   execute function public.prevent_user_role_escalation();
 
--- Trigger: Automatically create / update public.users row on auth.users registration
+-- Trigger: Automatically create public.users profile on auth.users registration
+-- Strictly default role to 'student', never trusting raw_user_meta_data for privileges
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
   insert into public.users (id, email, name, role, department, year, roll_number, position)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'role', 'student'),
+    'student',
     new.raw_user_meta_data->>'department',
     new.raw_user_meta_data->>'year',
     new.raw_user_meta_data->>'roll_number',
@@ -128,14 +189,14 @@ begin
   on conflict (id) do update set
     email = excluded.email,
     name = coalesce(excluded.name, public.users.name),
-    role = coalesce(excluded.role, public.users.role),
+    role = public.users.role, -- Never overwrite role on sync
     department = coalesce(excluded.department, public.users.department),
     year = coalesce(excluded.year, public.users.year),
     roll_number = coalesce(excluded.roll_number, public.users.roll_number),
     position = coalesce(excluded.position, public.users.position);
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -222,11 +283,13 @@ create table if not exists public.registrations (
 alter table public.registrations enable row level security;
 
 drop policy if exists "Users can view their own registrations or event creators view registrations" on public.registrations;
-create policy "Users can view their own registrations or event creators view registrations"
+drop policy if exists "Users and organizers view registrations" on public.registrations;
+create policy "Users and organizers view registrations"
   on public.registrations for select
   to authenticated
   using (
     auth.uid() = user_id or
+    public.is_staff_or_admin() or
     exists (
       select 1 from public.events
       where events.id = registrations.event_id
@@ -247,17 +310,37 @@ create policy "Users can cancel their own registrations"
   using (auth.uid() = user_id or public.is_admin());
 
 grant select, insert, update, delete on table public.registrations to authenticated;
-grant select on table public.registrations to anon;
 
 -- RPC to increment event participants safely
 create or replace function public.increment_participants(event_id bigint)
-returns void as $$
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
   update public.events
   set current_participants = coalesce(current_participants, 0) + 1
   where id = event_id;
 end;
-$$ language plpgsql security definer;
+$$;
+
+-- RPC to decrement event participants safely
+create or replace function public.decrement_participants(event_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update public.events
+  set current_participants = greatest(coalesce(current_participants, 0) - 1, 0)
+  where id = event_id;
+end;
+$$;
+
+grant execute on function public.increment_participants(bigint) to authenticated;
+grant execute on function public.decrement_participants(bigint) to authenticated;
 
 -- ------------------------------------------------------------------------------
 -- 7. CLUBS TABLE & RLS
@@ -279,8 +362,35 @@ create table if not exists public.clubs (
 alter table public.clubs enable row level security;
 drop policy if exists "Clubs are viewable by everyone" on public.clubs;
 create policy "Clubs are viewable by everyone" on public.clubs for select using (true);
+
 drop policy if exists "Staff can manage clubs" on public.clubs;
-create policy "Staff can manage clubs" on public.clubs for all to authenticated using (public.is_staff_or_admin());
+drop policy if exists "Authenticated users can create clubs" on public.clubs;
+create policy "Authenticated users can create clubs"
+  on public.clubs for insert
+  to authenticated
+  with check (true);
+
+drop policy if exists "Authorized users can update clubs" on public.clubs;
+create policy "Authorized users can update clubs"
+  on public.clubs for update
+  to authenticated
+  using (
+    public.is_staff_or_admin() or
+    (lead_email is not null and lower(lead_email) = lower(auth.jwt()->>'email'))
+  )
+  with check (
+    public.is_staff_or_admin() or
+    (lead_email is not null and lower(lead_email) = lower(auth.jwt()->>'email'))
+  );
+
+drop policy if exists "Authorized users can delete clubs" on public.clubs;
+create policy "Authorized users can delete clubs"
+  on public.clubs for delete
+  to authenticated
+  using (
+    public.is_staff_or_admin() or
+    (lead_email is not null and lower(lead_email) = lower(auth.jwt()->>'email'))
+  );
 
 grant select on table public.clubs to anon, authenticated;
 grant insert, update, delete on table public.clubs to authenticated;

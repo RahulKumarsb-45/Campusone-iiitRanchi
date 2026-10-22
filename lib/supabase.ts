@@ -305,34 +305,35 @@ export async function createEvent(
       .select();
 
     if (error) {
-      console.error("Error creating event:", error);
-      return null;
+      console.error("Error creating event:", error.message);
+      throw new Error(error.message);
     }
 
     return data ? (data[0] as EventType) : null;
-  } catch (err) {
-    console.error("createEvent error:", err);
-    return null;
+  } catch (err: any) {
+    console.error("createEvent error:", err.message);
+    throw new Error(err.message || "Failed to create event");
   }
 }
 
 export async function updateEvent(id: number, updates: Partial<EventType>) {
   try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
     const { data, error } = await supabase
       .from("events")
-      .update(updates)
+      .update(safeUpdates)
       .eq("id", id)
       .select();
 
     if (error) {
-      console.error("Error updating event:", error);
-      return null;
+      console.error("Error updating event:", error.message);
+      throw new Error(error.message);
     }
 
     return data ? (data[0] as EventType) : null;
-  } catch (err) {
-    console.error("updateEvent error:", err);
-    return null;
+  } catch (err: any) {
+    console.error("updateEvent error:", err.message);
+    throw new Error(err.message || "Failed to update event");
   }
 }
 
@@ -388,7 +389,22 @@ export async function registerForEvent(
       return { error: "You are already registered for this event." };
     }
 
-    // 2. Insert registration
+    // 2. Check event capacity limits
+    const { data: eventData } = await supabase
+      .from("events")
+      .select("current_participants, max_participants")
+      .eq("id", eventId)
+      .single();
+
+    if (
+      eventData &&
+      eventData.max_participants > 0 &&
+      (eventData.current_participants || 0) >= eventData.max_participants
+    ) {
+      return { error: "This event has reached maximum capacity." };
+    }
+
+    // 3. Insert registration
     const { data, error } = await supabase
       .from("registrations")
       .insert([
@@ -442,17 +458,21 @@ export async function cancelRegistration(eventId: number, userId: string) {
       return { error: error.message };
     }
 
-    // Decrement participants count
-    const { data: ev } = await supabase
-      .from("events")
-      .select("current_participants")
-      .eq("id", eventId)
-      .single();
-    if (ev && (ev.current_participants || 0) > 0) {
-      await supabase
+    // Decrement participants count via RPC with manual fallback
+    try {
+      await supabase.rpc("decrement_participants", { event_id: eventId });
+    } catch {
+      const { data: ev } = await supabase
         .from("events")
-        .update({ current_participants: ev.current_participants - 1 })
-        .eq("id", eventId);
+        .select("current_participants")
+        .eq("id", eventId)
+        .single();
+      if (ev && (ev.current_participants || 0) > 0) {
+        await supabase
+          .from("events")
+          .update({ current_participants: ev.current_participants - 1 })
+          .eq("id", eventId);
+      }
     }
 
     return { success: true };
@@ -623,15 +643,70 @@ export async function fetchClubs(category?: string): Promise<ClubType[]> {
 
 export async function createClub(club: Omit<ClubType, "id" | "created_at">) {
   try {
+    const cleanCode = club.code.trim().toUpperCase();
+    const { data: existing } = await supabase
+      .from("clubs")
+      .select("id")
+      .ilike("code", cleanCode)
+      .maybeSingle();
+
+    if (existing) {
+      return { error: `Club code "${cleanCode}" is already in use. Please choose a unique code.` };
+    }
+
     const { data, error } = await supabase
       .from("clubs")
-      .insert([club])
+      .insert([{ ...club, code: cleanCode }])
       .select()
       .single();
     if (error) return { error: error.message };
     return { data: data as ClubType };
   } catch (err: any) {
     return { error: err.message };
+  }
+}
+
+export async function updateClub(id: number, updates: Partial<ClubType>) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+
+    if (safeUpdates.code) {
+      const cleanCode = safeUpdates.code.trim().toUpperCase();
+      safeUpdates.code = cleanCode;
+
+      const { data: existing } = await supabase
+        .from("clubs")
+        .select("id")
+        .ilike("code", cleanCode)
+        .neq("id", id)
+        .maybeSingle();
+
+      if (existing) {
+        return { error: `Club code "${cleanCode}" is already in use by another club.` };
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("clubs")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) return { error: error.message };
+    return { data: data as ClubType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function deleteClub(id: number) {
+  try {
+    const { error } = await supabase.from("clubs").delete().eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 }
 

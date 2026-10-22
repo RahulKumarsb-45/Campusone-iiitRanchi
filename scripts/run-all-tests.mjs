@@ -226,6 +226,61 @@ async function runTestSuite() {
   );
   assert(injectionRes.isRefusal, "AI Safety: Refuses prompt injection attempt");
 
+  // -------------------------------------------------------------
+  // SUITE 4: Clubs CRUD & Profile Security Policies
+  // -------------------------------------------------------------
+  console.log("Suite 4: Clubs CRUD & Profile Security Policies");
+
+  // Helper function replicating canManageClub authorization logic
+  const canManageClub = (userRole, userEmail, clubLeadEmail) => {
+    if (!userRole) return false;
+    if (isStaffOrAdmin(userRole)) return true;
+    if (clubLeadEmail && userEmail && clubLeadEmail.toLowerCase() === userEmail.toLowerCase()) return true;
+    return false;
+  };
+
+  assert(
+    canManageClub("admin", "admin@iiitranchi.ac.in", "lead@iiitranchi.ac.in") === true,
+    "Clubs Auth: Admin can manage any club",
+  );
+  assert(
+    canManageClub("faculty", "faculty@iiitranchi.ac.in", "lead@iiitranchi.ac.in") === true,
+    "Clubs Auth: Faculty can manage any club",
+  );
+  assert(
+    canManageClub("organizer", "org@iiitranchi.ac.in", "lead@iiitranchi.ac.in") === true,
+    "Clubs Auth: Organizer can manage any club",
+  );
+  assert(
+    canManageClub("student", "lead@iiitranchi.ac.in", "lead@iiitranchi.ac.in") === true,
+    "Clubs Auth: Club Lead can manage their own club",
+  );
+  assert(
+    canManageClub("student", "other@iiitranchi.ac.in", "lead@iiitranchi.ac.in") === false,
+    "Clubs Auth: Unrelated student cannot manage club",
+  );
+  assert(
+    canManageClub(undefined, undefined, "lead@iiitranchi.ac.in") === false,
+    "Clubs Auth: Unauthenticated visitor cannot manage club",
+  );
+
+  // Profile update safety: ensure role and id cannot be tampered with
+  const sanitizeProfileUpdate = (updates) => {
+    const { role: _discardRole, id: _discardId, ...safe } = updates;
+    return safe;
+  };
+  const dirtyUpdate = { name: "New Name", role: "admin", id: "malicious-id", bio: "Hello" };
+  const safeResult = sanitizeProfileUpdate(dirtyUpdate);
+  assert(safeResult.role === undefined, "Profile Security: Strips attempted role alteration");
+  assert(safeResult.id === undefined, "Profile Security: Strips attempted id re-assignment");
+  assert(safeResult.name === "New Name" && safeResult.bio === "Hello", "Profile Security: Preserves safe profile fields");
+
+  // Event capacity gate check
+  const isCapacityFull = (current, max) => max > 0 && current >= max;
+  assert(isCapacityFull(100, 100) === true, "Event Capacity: Rejects registration when event is full (100/100)");
+  assert(isCapacityFull(99, 100) === false, "Event Capacity: Allows registration when space remains (99/100)");
+  assert(isCapacityFull(0, 0) === false, "Event Capacity: Unlimited capacity allowed when max is 0");
+
   console.log();
   console.log(
     "================================================================",

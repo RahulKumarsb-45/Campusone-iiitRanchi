@@ -17,7 +17,7 @@ import { updateUserProfile, fetchUserRegistrations, type RegistrationType } from
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, refreshProfile } = useAuth()
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -80,6 +80,7 @@ export default function ProfilePage() {
           variant: "destructive",
         })
       } else {
+        await refreshProfile()
         toast({
           title: "Profile updated",
           description: "Your profile details have been saved.",

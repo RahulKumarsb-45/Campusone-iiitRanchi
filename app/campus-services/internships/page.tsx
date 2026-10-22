@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchInternships, createInternship, type InternshipType } from "@/lib/supabase"
+import { fetchInternships, createInternship, isStaffOrAdmin, type InternshipType } from "@/lib/supabase"
 
 export default function InternshipsPage() {
   const { user } = useAuth()
@@ -64,7 +64,14 @@ export default function InternshipsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !isStaffOrAdmin(user.role)) {
+      toast({
+        title: "Permission Denied",
+        description: "Only verified campus coordinators, faculty, and administrators may post research or corporate internships.",
+        variant: "destructive",
+      })
+      return
+    }
     setIsSubmitting(true)
 
     try {
@@ -115,7 +122,7 @@ export default function InternshipsPage() {
           </p>
         </div>
 
-        {user && (
+        {isStaffOrAdmin(user?.role) && (
           <Button
             onClick={() => setShowAddModal(true)}
             className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black gap-1.5"

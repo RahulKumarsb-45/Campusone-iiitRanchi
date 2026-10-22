@@ -15,6 +15,7 @@ type SignUpResult = {
 type AuthContextType = {
   user: UserType | null
   loading: boolean
+  refreshProfile: () => Promise<void>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signUp: (email: string, password: string, userData: Partial<UserType>) => Promise<SignUpResult>
   resendVerificationEmail: (email: string) => Promise<{ error?: string; success?: boolean }>
@@ -33,18 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const syncUserProfile = async (sessionUser: any): Promise<UserType | null> => {
     try {
       const meta = sessionUser.user_metadata || {}
-      const fallbackProfile: UserType = {
-        id: sessionUser.id,
-        email: sessionUser.email || "",
-        name: meta.name || sessionUser.email?.split("@")[0] || "User",
-        role: meta.role || "student",
-        department: meta.department || undefined,
-        year: meta.year || undefined,
-        roll_number: meta.roll_number || undefined,
-        position: meta.position || undefined,
-      }
 
-      // 1. Attempt to fetch existing profile
+      // 1. Fetch existing profile from the database (database is the sole authority for roles)
       const { data: existingProfile, error: fetchError } = await supabase
         .from("users")
         .select("*")
@@ -55,23 +46,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return existingProfile as UserType
       }
 
-      // 2. If profile does not exist, use session user metadata to create it
-      // Note: Because we have an active session, auth.uid() = sessionUser.id
-      const { data: createdProfile, error: upsertError } = await supabase
+      if (fetchError) {
+        console.error("Database error fetching profile for user:", fetchError.message)
+        // If there's a DB error (such as permissions or network), do not attempt an upsert that could overwrite existing data
+        return null
+      }
+
+      // 2. Profile does not exist in DB yet. Create initial profile with strictly 'student' role.
+      // Never trust metadata role for privilege assignment.
+      const initialProfile: UserType = {
+        id: sessionUser.id,
+        email: sessionUser.email || "",
+        name: meta.name || sessionUser.email?.split("@")[0] || "User",
+        role: "student",
+        department: meta.department || undefined,
+        year: meta.year || undefined,
+        roll_number: meta.roll_number || undefined,
+        position: meta.position || undefined,
+      }
+
+      const { data: createdProfile, error: insertError } = await supabase
         .from("users")
-        .upsert([fallbackProfile], { onConflict: "id" })
+        .insert([initialProfile])
         .select()
         .maybeSingle()
 
-      if (upsertError) {
-        console.warn("Could not upsert profile on sync (using in-memory metadata):", upsertError.message)
-        return fallbackProfile
+      if (insertError) {
+        console.warn("Could not insert initial profile:", insertError.message)
+        return initialProfile
       }
 
-      return (createdProfile as UserType) || fallbackProfile
+      return (createdProfile as UserType) || initialProfile
     } catch (err) {
       console.error("Error in syncUserProfile:", err)
       return null
+    }
+  }
+
+  // Explicit profile refresh function: re-queries public.users for the latest role and fields
+  const refreshProfile = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (session?.user) {
+        const profile = await syncUserProfile(session.user)
+        if (profile) {
+          setUser(profile)
+        }
+      } else {
+        setUser(null)
+      }
+    } catch (err) {
+      console.error("Error in refreshProfile:", err)
     }
   }
 
@@ -111,8 +139,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
+    // Auto-refresh profile on window focus (e.g. if an admin changed the role in Supabase)
+    const handleFocus = () => {
+      refreshProfile()
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleFocus)
+    }
+
     return () => {
       subscription.unsubscribe()
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleFocus)
+      }
     }
   }, [])
 
@@ -151,10 +190,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const cleanEmail = email.trim().toLowerCase()
 
-      // Safely preserve all Step 1 and Step 2 profile fields in Supabase user metadata
+      // Enforce student role for public signup.
+      // Roles like admin and faculty must be assigned by authorized administrators.
       const userMetadata = {
         name: userData.name || "",
-        role: userData.role || "student",
+        role: "student",
         department: userData.department || null,
         year: userData.year || null,
         roll_number: userData.roll_number || null,
@@ -224,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: data.user.id,
           email: cleanEmail,
           name: userData.name || data.user.email?.split("@")[0] || "User",
-          role: userData.role || "student",
+          role: "student",
           department: userData.department,
           year: userData.year,
           roll_number: userData.roll_number,
@@ -310,7 +350,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, resendVerificationEmail, signOut, googleSignIn }}>
+    <AuthContext.Provider
+      value={{ user, loading, refreshProfile, signIn, signUp, resendVerificationEmail, signOut, googleSignIn }}
+    >
       {children}
     </AuthContext.Provider>
   )

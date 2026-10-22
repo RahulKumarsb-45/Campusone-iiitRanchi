@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchPlacements, createPlacement, type PlacementType } from "@/lib/supabase"
+import { fetchPlacements, createPlacement, isStaffOrAdmin, type PlacementType } from "@/lib/supabase"
 
 export default function PlacementsPage() {
   const { user } = useAuth()
@@ -62,7 +62,14 @@ export default function PlacementsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !isStaffOrAdmin(user.role)) {
+      toast({
+        title: "Permission Denied",
+        description: "Only verified TPO staff, faculty, and administrators may post placement drives.",
+        variant: "destructive",
+      })
+      return
+    }
     setIsSubmitting(true)
 
     try {
@@ -112,7 +119,7 @@ export default function PlacementsPage() {
           </p>
         </div>
 
-        {user && (
+        {isStaffOrAdmin(user?.role) && (
           <Button
             onClick={() => setShowAddModal(true)}
             className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black gap-1.5"

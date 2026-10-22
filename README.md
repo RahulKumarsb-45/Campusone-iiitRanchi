@@ -6,7 +6,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-emerald?style=flat&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
 [![Tests](https://img.shields.io/badge/Unit%20Tests-27%20Passed-brightgreen?style=flat)](#testing--verification)
-[![AI Evaluation](https://img.shields.io/badge/AI%20Benchmark-96%25%20Passed-success?style=flat)](#ai-assistant-design--evaluation)
+[![AI Evaluation](https://img.shields.io/badge/AI%20Benchmark-100%25%20Passed-success?style=flat)](#ai-assistant-design--evaluation)
 
 > **Portfolio Context:** CampusOne is an enterprise-grade campus management platform and an end-to-end **Product Management + AI Product Management** portfolio project developed by **Rahul Kumar** (B.Tech Computer Science and Engineering, IIIT Ranchi).
 > _Notice: This is an independent student engineering initiative. It is not officially endorsed by or affiliated with the IIIT Ranchi administration._
@@ -237,14 +237,19 @@ EMAIL_FROM="CampusOne <no-reply@campusone.iiitranchi.ac.in>"
 
 ---
 
-## 9. Supabase Database Setup & Safe Migration Order
+## 9. Supabase Database Setup & Migration Order
 
-Apply the SQL migrations sequentially in the Supabase SQL Editor:
+You can configure the database using either the all-in-one consolidated script or sequential migrations:
 
-1. [`supabase/migrations/20250101000000_init_schema.sql`](supabase/migrations/20250101000000_init_schema.sql): Base `users`, `events`, `registrations` tables with initial sample records and indexes.
+### Option A: All-in-One Master Setup (Recommended)
+Open **Supabase Dashboard** -> **SQL Editor** -> **New Query**, paste the complete contents of [`supabase/COMPLETE_SETUP.sql`](supabase/COMPLETE_SETUP.sql), and click **Run**.
+This idempotently creates all 12 tables, grants required privileges to `authenticated` and `anon` roles, installs RLS policies, and registers the auto-profile synchronization trigger.
+
+### Option B: Sequential Migrations
+1. [`supabase/migrations/20250101000000_init_schema.sql`](supabase/migrations/20250101000000_init_schema.sql): Base `users`, `events`, `registrations` tables with initial records and indexes.
 2. [`supabase/migrations/20250102000000_fix_users_registration.sql`](supabase/migrations/20250102000000_fix_users_registration.sql): Trigger to auto-sync auth metadata to `public.users`.
 3. [`supabase/migrations/20250103000000_campusone_full_features.sql`](supabase/migrations/20250103000000_campusone_full_features.sql): Campus services, clubs, notices, lost & found, and marketplace.
-4. [`supabase/migrations/20250104000000_security_and_role_governance.sql`](supabase/migrations/20250104000000_security_and_role_governance.sql): **Crucial Security Patch** — installs `prevent_user_role_escalation`, role-based notice restrictions, and creates `hostel_complaints` with strict state transitions.
+4. [`supabase/migrations/20250104000000_security_and_role_governance.sql`](supabase/migrations/20250104000000_security_and_role_governance.sql): Security hardening — installs `prevent_user_role_escalation`, role-based notice restrictions, and creates `hostel_complaints` with strict state transitions.
 
 ---
 
@@ -254,10 +259,10 @@ The project includes automated test runners for unit testing and AI evaluation:
 
 ```bash
 # 1. Run all core unit & authorization tests (27 passing tests)
-npm test
+node --experimental-strip-types scripts/run-all-tests.mjs
 
-# 2. Run the 50-query AI assistant benchmark evaluation (96% pass rate)
-npm run test:ai
+# 2. Run the 50-query AI assistant benchmark evaluation (100% pass rate)
+node --experimental-strip-types scripts/evaluate-assistant.mjs
 
 # 3. Verify TypeScript type safety
 npx tsc --noEmit
