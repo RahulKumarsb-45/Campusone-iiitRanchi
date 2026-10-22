@@ -1,0 +1,988 @@
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// ================= TYPES =================
+
+export type EventType = {
+  id: number
+  title: string
+  description: string
+  long_description?: string
+  image: string
+  date: string
+  end_date?: string
+  location: string
+  address?: string
+  category: string
+  other_category_details?: string
+  tags: string[]
+  organizer: string
+  lead_organizer?: string
+  convener?: string
+  coordinator?: string
+  contact_number?: string
+  registration_link?: string
+  is_paid: boolean
+  price?: number
+  max_participants: number
+  current_participants: number
+  created_at: string
+  user_id?: string
+  needs_volunteers: boolean
+  volunteer_roles?: string[]
+}
+
+export type UserType = {
+  id: string
+  email: string
+  name: string
+  role: "student" | "faculty" | "guest" | "organizer" | "admin"
+  department?: string
+  year?: string
+  roll_number?: string
+  position?: string
+  phone?: string
+  address?: string
+  bio?: string
+  avatar_url?: string
+}
+
+export type RegistrationType = {
+  id: number
+  event_id: number
+  user_id: string
+  registration_date: string
+  payment_status?: "pending" | "completed"
+  payment_id?: string
+  is_volunteer: boolean
+  volunteer_role?: string
+  event?: EventType
+}
+
+export type ClubType = {
+  id: number
+  name: string
+  code: string
+  category: "Technical" | "Cultural" | "Sports" | "Literary" | "Social"
+  description: string
+  lead_name: string
+  lead_email?: string
+  meeting_info?: string
+  image: string
+  tags: string[]
+  created_at?: string
+}
+
+export type InternshipType = {
+  id: number
+  title: string
+  company: string
+  role_type: string
+  stipend: string
+  location: string
+  deadline: string
+  eligibility: string
+  description: string
+  apply_link?: string
+  user_id?: string
+  created_at?: string
+}
+
+export type PlacementType = {
+  id: number
+  company: string
+  role: string
+  ctc: string
+  eligibility: string
+  drive_date: string
+  location: string
+  description: string
+  apply_link?: string
+  user_id?: string
+  created_at?: string
+}
+
+export type NoticeType = {
+  id: number
+  title: string
+  content: string
+  department: string
+  priority: "High" | "Medium" | "Normal"
+  notice_type: "college" | "hostel"
+  target_audience: string
+  file_url?: string
+  user_id?: string
+  created_at: string
+}
+
+export type AnnouncementType = {
+  id: number
+  title: string
+  content: string
+  category: string
+  urgent: boolean
+  user_id?: string
+  created_at: string
+}
+
+export type LostFoundItemType = {
+  id: number
+  type: "lost" | "found"
+  title: string
+  description: string
+  category: string
+  location: string
+  date: string
+  contact: string
+  status: "open" | "claimed" | "resolved"
+  image?: string
+  user_id?: string
+  created_at: string
+}
+
+export type MarketplaceItemType = {
+  id: number
+  title: string
+  description: string
+  price: number
+  category: string
+  condition: string
+  contact: string
+  status: "available" | "sold"
+  image?: string
+  user_id?: string
+  created_at: string
+}
+
+export type GalleryImageType = {
+  id: number
+  title: string
+  description?: string
+  category: string
+  event_name?: string
+  image_url: string
+  user_id?: string
+  created_at: string
+}
+
+// ================= EVENTS API =================
+
+export async function fetchEvents(options?: {
+  category?: string
+  limit?: number
+  orderBy?: string
+  ascending?: boolean
+  upcoming?: boolean
+}): Promise<EventType[]> {
+  try {
+    let query = supabase.from("events").select("*")
+
+    if (options?.category && options.category !== "all") {
+      query = query.eq("category", options.category)
+    }
+
+    if (options?.upcoming) {
+      query = query.gte("date", new Date().toISOString())
+    }
+
+    if (options?.orderBy) {
+      if (options.orderBy.includes(".")) {
+        const [col, dir] = options.orderBy.split(".")
+        const isAsc = options.ascending !== undefined ? options.ascending : dir?.toLowerCase() !== "desc"
+        query = query.order(col, { ascending: isAsc })
+      } else {
+        query = query.order(options.orderBy, { ascending: options.ascending ?? true })
+      }
+    } else {
+      query = query.order("date", { ascending: true })
+    }
+
+    if (options?.limit) {
+      query = query.limit(options.limit)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.warn("Error fetching events from Supabase:", error.message)
+      return []
+    }
+
+    return (data as EventType[]) || []
+  } catch (err) {
+    console.error("fetchEvents error:", err)
+    return []
+  }
+}
+
+export async function fetchEventById(id: number): Promise<EventType | null> {
+  try {
+    const { data, error } = await supabase.from("events").select("*").eq("id", id).maybeSingle()
+
+    if (error) {
+      console.warn(`Error fetching event ${id}:`, error.message)
+      return null
+    }
+
+    return (data as EventType) || null
+  } catch (err) {
+    console.error("fetchEventById error:", err)
+    return null
+  }
+}
+
+export async function createEvent(event: Omit<EventType, "id" | "created_at" | "current_participants">) {
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .insert([
+        {
+          ...event,
+          current_participants: 0,
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+
+    if (error) {
+      console.error("Error creating event:", error)
+      return null
+    }
+
+    return data ? (data[0] as EventType) : null
+  } catch (err) {
+    console.error("createEvent error:", err)
+    return null
+  }
+}
+
+export async function updateEvent(id: number, updates: Partial<EventType>) {
+  try {
+    const { data, error } = await supabase
+      .from("events")
+      .update(updates)
+      .eq("id", id)
+      .select()
+
+    if (error) {
+      console.error("Error updating event:", error)
+      return null
+    }
+
+    return data ? (data[0] as EventType) : null
+  } catch (err) {
+    console.error("updateEvent error:", err)
+    return null
+  }
+}
+
+export async function deleteEvent(id: number) {
+  try {
+    const { error } = await supabase.from("events").delete().eq("id", id)
+    if (error) {
+      console.error("Error deleting event:", error)
+      return { success: false, error: error.message }
+    }
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+// ================= REGISTRATIONS API =================
+
+export async function checkUserRegistration(eventId: number, userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from("registrations")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    return !!data
+  } catch {
+    return false
+  }
+}
+
+export async function registerForEvent(
+  eventId: number,
+  userId: string,
+  isVolunteer = false,
+  volunteerRole?: string
+) {
+  try {
+    // 1. Check if already registered
+    const { data: existingReg } = await supabase
+      .from("registrations")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (existingReg) {
+      return { error: "You are already registered for this event." }
+    }
+
+    // 2. Insert registration
+    const { data, error } = await supabase
+      .from("registrations")
+      .insert([
+        {
+          event_id: eventId,
+          user_id: userId,
+          registration_date: new Date().toISOString(),
+          is_volunteer: isVolunteer,
+          volunteer_role: volunteerRole,
+        },
+      ])
+      .select()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    // 3. Increment current participants
+    try {
+      await supabase.rpc("increment_participants", { event_id: eventId })
+    } catch {
+      // Fallback manual increment if RPC is missing
+      const { data: ev } = await supabase.from("events").select("current_participants").eq("id", eventId).single()
+      if (ev) {
+        await supabase
+          .from("events")
+          .update({ current_participants: (ev.current_participants || 0) + 1 })
+          .eq("id", eventId)
+      }
+    }
+
+    return { data: data ? data[0] : null }
+  } catch (err: any) {
+    return { error: err.message || "Failed to register" }
+  }
+}
+
+export async function cancelRegistration(eventId: number, userId: string) {
+  try {
+    const { error } = await supabase
+      .from("registrations")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("user_id", userId)
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    // Decrement participants count
+    const { data: ev } = await supabase.from("events").select("current_participants").eq("id", eventId).single()
+    if (ev && (ev.current_participants || 0) > 0) {
+      await supabase
+        .from("events")
+        .update({ current_participants: ev.current_participants - 1 })
+        .eq("id", eventId)
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+export async function fetchUserRegistrations(userId: string): Promise<RegistrationType[]> {
+  try {
+    const { data, error } = await supabase
+      .from("registrations")
+      .select("*, event:events(*)")
+      .eq("user_id", userId)
+      .order("registration_date", { ascending: false })
+
+    if (error) {
+      console.warn("fetchUserRegistrations error:", error.message)
+      return []
+    }
+
+    return (data as RegistrationType[]) || []
+  } catch (err) {
+    console.error("fetchUserRegistrations error:", err)
+    return []
+  }
+}
+
+// ================= USER PROFILE API =================
+
+export async function updateUserProfile(id: string, updates: Partial<UserType>) {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating profile:", error.message)
+      return { error: error.message }
+    }
+
+    return { data: data as UserType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= CLUBS API =================
+
+const fallbackClubs: ClubType[] = [
+  {
+    id: 1,
+    name: "House of Geeks",
+    code: "HOG",
+    category: "Technical",
+    description: "Official coding, algorithmic programming, and open-source development club of IIIT Ranchi.",
+    lead_name: "Rahul Sharma",
+    lead_email: "hog@iiitranchi.ac.in",
+    meeting_info: "Every Wednesday 6 PM, Computer Lab 2",
+    image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
+    tags: ["coding", "development", "competitive-programming"],
+  },
+  {
+    id: 2,
+    name: "Robotics & IoT Club",
+    code: "ROBO",
+    category: "Technical",
+    description: "Autonomous robotics, embedded systems, microcontrollers, and hardware innovations.",
+    lead_name: "Aarav Patel",
+    lead_email: "robotics@iiitranchi.ac.in",
+    meeting_info: "Saturdays 3 PM, Innovation Lab",
+    image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80",
+    tags: ["robotics", "iot", "hardware"],
+  },
+  {
+    id: 3,
+    name: "Vibrance Cultural Society",
+    code: "VIBRANCE",
+    category: "Cultural",
+    description: "Fostering music, dramatic arts, dance, and cultural celebrations across campus.",
+    lead_name: "Pooja Verma",
+    lead_email: "cultural@iiitranchi.ac.in",
+    meeting_info: "Tuesdays 5 PM, Open Amphitheater",
+    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
+    tags: ["dance", "music", "drama"],
+  },
+  {
+    id: 4,
+    name: "E-Cell IIIT Ranchi",
+    code: "ECELL",
+    category: "Social",
+    description: "Entrepreneurship cell empowering students to launch startups, incubate ideas, and build ventures.",
+    lead_name: "Ankit Roy",
+    lead_email: "ecell@iiitranchi.ac.in",
+    meeting_info: "Fridays 4 PM, Seminar Hall",
+    image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=800&q=80",
+    tags: ["startups", "entrepreneurship", "ventures"],
+  },
+  {
+    id: 5,
+    name: "Sports & Athletics Society",
+    code: "SPORTS",
+    category: "Sports",
+    description: "Cricket, football, badminton, chess, volleyball, and university athletics championships.",
+    lead_name: "Vikram Singh",
+    lead_email: "sports@iiitranchi.ac.in",
+    meeting_info: "Daily 5:30 PM, Sports Complex",
+    image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
+    tags: ["sports", "fitness", "athletics"],
+  },
+]
+
+export async function fetchClubs(category?: string): Promise<ClubType[]> {
+  try {
+    let query = supabase.from("clubs").select("*").order("name")
+    if (category && category !== "All") {
+      query = query.eq("category", category)
+    }
+    const { data, error } = await query
+    if (error || !data || data.length === 0) {
+      if (category && category !== "All") {
+        return fallbackClubs.filter((c) => c.category.toLowerCase() === category.toLowerCase())
+      }
+      return fallbackClubs
+    }
+    return data as ClubType[]
+  } catch {
+    return fallbackClubs
+  }
+}
+
+export async function createClub(club: Omit<ClubType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("clubs").insert([club]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as ClubType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= CAMPUS SERVICES: INTERNSHIPS =================
+
+const fallbackInternships: InternshipType[] = [
+  {
+    id: 1,
+    title: "Summer Software Engineer Intern",
+    company: "Google India",
+    role_type: "Software Engineering",
+    stipend: "₹1,25,000 / month",
+    location: "Bangalore / Hyderabad",
+    deadline: new Date(Date.now() + 30 * 86400000).toISOString(),
+    eligibility: "B.Tech CSE/ECE 3rd Year (CGPA 7.5+)",
+    description: "Work with Google Cloud or Search infrastructure teams building scalable systems in Go/C++.",
+    apply_link: "https://careers.google.com",
+  },
+  {
+    id: 2,
+    title: "Frontend Developer Intern",
+    company: "CRED",
+    role_type: "Web Development",
+    stipend: "₹70,000 / month",
+    location: "Bangalore (On-site)",
+    deadline: new Date(Date.now() + 18 * 86400000).toISOString(),
+    eligibility: "B.Tech CSE 2nd & 3rd Year",
+    description: "Build high-performance React & TypeScript user interfaces with top notch motion design.",
+    apply_link: "https://careers.cred.club",
+  },
+  {
+    id: 3,
+    title: "Machine Learning Research Intern",
+    company: "Microsoft Research",
+    role_type: "AI / ML",
+    stipend: "₹1,00,000 / month",
+    location: "Bangalore / Hybrid",
+    deadline: new Date(Date.now() + 25 * 86400000).toISOString(),
+    eligibility: "Pre-final & Final Year Students",
+    description: "Conduct research on multi-modal language models and efficient deep learning inference.",
+    apply_link: "https://careers.microsoft.com",
+  },
+]
+
+export async function fetchInternships(): Promise<InternshipType[]> {
+  try {
+    const { data, error } = await supabase.from("internships").select("*").order("deadline", { ascending: true })
+    if (error || !data || data.length === 0) return fallbackInternships
+    return data as InternshipType[]
+  } catch {
+    return fallbackInternships
+  }
+}
+
+export async function createInternship(internship: Omit<InternshipType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("internships").insert([internship]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as InternshipType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= CAMPUS SERVICES: PLACEMENTS =================
+
+const fallbackPlacements: PlacementType[] = [
+  {
+    id: 1,
+    company: "Atlassian",
+    role: "Software Engineer (Graduate)",
+    ctc: "₹45 LPA",
+    eligibility: "B.Tech CSE/ECE CGPA 8.0+",
+    drive_date: new Date(Date.now() + 14 * 86400000).toISOString(),
+    location: "Virtual Drive & PPT",
+    description: "Full-time campus recruitment drive for final year batch. Online assessment followed by technical interviews.",
+    apply_link: "https://tpo.iiitranchi.ac.in",
+  },
+  {
+    id: 2,
+    company: "Amazon",
+    role: "SDE-1",
+    ctc: "₹38 LPA",
+    eligibility: "B.Tech CSE/ECE with no active backlogs",
+    drive_date: new Date(Date.now() + 21 * 86400000).toISOString(),
+    location: "IIIT Ranchi Main Campus",
+    description: "Campus recruitment for graduating engineers. Focus on DSA, System Design, and Leadership Principles.",
+    apply_link: "https://tpo.iiitranchi.ac.in",
+  },
+  {
+    id: 3,
+    company: "Oracle",
+    role: "Member Technical Staff",
+    ctc: "₹22 LPA",
+    eligibility: "B.Tech CSE/ECE CGPA 7.0+",
+    drive_date: new Date(Date.now() + 28 * 86400000).toISOString(),
+    location: "Virtual Drive",
+    description: "Database and cloud infrastructure engineering roles at Oracle India Cloud Center.",
+    apply_link: "https://tpo.iiitranchi.ac.in",
+  },
+]
+
+export async function fetchPlacements(): Promise<PlacementType[]> {
+  try {
+    const { data, error } = await supabase.from("placements").select("*").order("drive_date", { ascending: true })
+    if (error || !data || data.length === 0) return fallbackPlacements
+    return data as PlacementType[]
+  } catch {
+    return fallbackPlacements
+  }
+}
+
+export async function createPlacement(placement: Omit<PlacementType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("placements").insert([placement]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as PlacementType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= NOTICES API (COLLEGE & HOSTEL) =================
+
+const fallbackNotices: NoticeType[] = [
+  {
+    id: 1,
+    title: "Schedule for Mid-Semester Examinations Autumn 2025",
+    content: "The Mid-Semester Examinations for B.Tech Autumn Semester 2025 will commence from the 2nd week of next month. Students must carry their valid institute ID cards to the examination halls.",
+    department: "Academic Affairs",
+    priority: "High",
+    notice_type: "college",
+    target_audience: "All Undergraduates",
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    title: "Summer Research Internship Application Guidelines",
+    content: "Eligible undergraduate students seeking faculty-mentored summer research projects should submit their proposals by the end of this month through the academic portal.",
+    department: "Dean R&D",
+    priority: "Medium",
+    notice_type: "college",
+    target_audience: "2nd & 3rd Year Students",
+    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
+  },
+  {
+    id: 3,
+    title: "Hostel Mess Menu Revision & Maintenance Guidelines",
+    content: "The revised mess menu approved by the Student Mess Committee is effective from Monday. Hostel residents are requested to ensure all electrical appliances comply with safety regulations.",
+    department: "Chief Warden Office",
+    priority: "High",
+    notice_type: "hostel",
+    target_audience: "Hostel Residents",
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 4,
+    title: "Campus Wi-Fi Maintenance & Certificate Renewal",
+    content: "Routine maintenance of campus network switches and Wi-Fi access points will take place this Sunday from 2 AM to 5 AM. Internet services may experience brief interruptions.",
+    department: "IT Services Cell",
+    priority: "Normal",
+    notice_type: "college",
+    target_audience: "All Students & Staff",
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
+]
+
+export async function fetchNotices(noticeType?: "college" | "hostel"): Promise<NoticeType[]> {
+  try {
+    let query = supabase.from("notices").select("*").order("created_at", { ascending: false })
+    if (noticeType) {
+      query = query.eq("notice_type", noticeType)
+    }
+    const { data, error } = await query
+    if (error || !data || data.length === 0) {
+      if (noticeType) {
+        return fallbackNotices.filter((n) => n.notice_type === noticeType)
+      }
+      return fallbackNotices
+    }
+    return data as NoticeType[]
+  } catch {
+    return noticeType ? fallbackNotices.filter((n) => n.notice_type === noticeType) : fallbackNotices
+  }
+}
+
+export async function createNotice(notice: Omit<NoticeType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("notices").insert([notice]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as NoticeType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= ANNOUNCEMENTS API =================
+
+const fallbackAnnouncements: AnnouncementType[] = [
+  {
+    id: 1,
+    title: 'Annual Cultural Fest "Kavach" Dates Announced',
+    content: "IIIT Ranchi is proud to announce Kavach 2025, taking place over three days next month with music concerts, hackathons, and guest performances!",
+    category: "Events",
+    urgent: false,
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    title: "Convocation Robes & Rehearsal Schedule",
+    content: "All graduating students are instructed to report to the Main Auditorium at 9:00 AM sharp on Saturday for the mandatory dress rehearsal and robe distribution.",
+    category: "Convocation",
+    urgent: true,
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+]
+
+export async function fetchAnnouncements(): Promise<AnnouncementType[]> {
+  try {
+    const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false })
+    if (error || !data || data.length === 0) return fallbackAnnouncements
+    return data as AnnouncementType[]
+  } catch {
+    return fallbackAnnouncements
+  }
+}
+
+export async function createAnnouncement(announcement: Omit<AnnouncementType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("announcements").insert([announcement]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as AnnouncementType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= INSTITUTE SERVICES: LOST AND FOUND =================
+
+const fallbackLostFound: LostFoundItemType[] = [
+  {
+    id: 1,
+    type: "lost",
+    title: "HP Laptop Charger (65W Type-C)",
+    description: "Left behind in Computer Lab 3 on the 2nd floor desk during the afternoon lab session.",
+    category: "Electronics",
+    location: "Computer Lab 3, Academic Block",
+    date: new Date(Date.now() - 1 * 86400000).toISOString(),
+    contact: "9876543210 (Rahul)",
+    status: "open",
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    type: "found",
+    title: "Water Bottle (Black Milton Thermosteel)",
+    description: "Found near the Library reading table on ground floor.",
+    category: "Stationery / Essentials",
+    location: "Central Library Reception",
+    date: new Date(Date.now() - 2 * 86400000).toISOString(),
+    contact: "Contact Librarian or security desk",
+    status: "open",
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    id: 3,
+    type: "lost",
+    title: "Student ID Card (CSE 2023 Batch)",
+    description: "Blue lanyard with ID card of CS department.",
+    category: "Identification",
+    location: "Near Basketball Court",
+    date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    contact: "9876543211",
+    status: "open",
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+]
+
+export async function fetchLostFoundItems(): Promise<LostFoundItemType[]> {
+  try {
+    const { data, error } = await supabase.from("lost_found_items").select("*").order("date", { ascending: false })
+    if (error || !data || data.length === 0) return fallbackLostFound
+    return data as LostFoundItemType[]
+  } catch {
+    return fallbackLostFound
+  }
+}
+
+export async function createLostFoundItem(item: Omit<LostFoundItemType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("lost_found_items").insert([item]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as LostFoundItemType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+export async function updateLostFoundStatus(id: number, status: "open" | "claimed" | "resolved") {
+  try {
+    const { data, error } = await supabase.from("lost_found_items").update({ status }).eq("id", id).select().single()
+    if (error) return { error: error.message }
+    return { data: data as LostFoundItemType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+export async function deleteLostFoundItem(id: number) {
+  try {
+    const { error } = await supabase.from("lost_found_items").delete().eq("id", id)
+    if (error) return { error: error.message }
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= INSTITUTE SERVICES: MARKETPLACE =================
+
+const fallbackMarketplace: MarketplaceItemType[] = [
+  {
+    id: 1,
+    title: "Standard Engineering Mathematics & DSA Textbooks",
+    description: "Tanenbaum Computer Networks, Cormen Algorithms (CLRS), and Discrete Math in excellent condition with no markings.",
+    price: 650,
+    category: "Books & Notes",
+    condition: "Like New",
+    contact: "WhatsApp: 9876543210",
+    status: "available",
+    image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    title: "Hero Sprint Mountain Bicycle (21 Speed)",
+    description: "Used for 1 year on campus. Front suspension, working dual disc brakes, newly serviced tires.",
+    price: 3200,
+    category: "Vehicles / Cycles",
+    condition: "Good",
+    contact: "Call: 9876543215",
+    status: "available",
+    image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=600&q=80",
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    id: 3,
+    title: "Foldable Study Table & Ergonomic Study Chair",
+    description: "Lightweight wooden folding study table with metal frame, suitable for hostel rooms.",
+    price: 950,
+    category: "Hostel Essentials",
+    condition: "Good",
+    contact: "Call: 9876543219",
+    status: "available",
+    image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=600&q=80",
+    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
+  },
+]
+
+export async function fetchMarketplaceItems(): Promise<MarketplaceItemType[]> {
+  try {
+    const { data, error } = await supabase.from("marketplace_items").select("*").order("created_at", { ascending: false })
+    if (error || !data || data.length === 0) return fallbackMarketplace
+    return data as MarketplaceItemType[]
+  } catch {
+    return fallbackMarketplace
+  }
+}
+
+export async function createMarketplaceItem(item: Omit<MarketplaceItemType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("marketplace_items").insert([item]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as MarketplaceItemType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+export async function updateMarketplaceStatus(id: number, status: "available" | "sold") {
+  try {
+    const { data, error } = await supabase.from("marketplace_items").update({ status }).eq("id", id).select().single()
+    if (error) return { error: error.message }
+    return { data: data as MarketplaceItemType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+export async function deleteMarketplaceItem(id: number) {
+  try {
+    const { error } = await supabase.from("marketplace_items").delete().eq("id", id)
+    if (error) return { error: error.message }
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
+
+// ================= INSTITUTE SERVICES: GALLERY =================
+
+const fallbackGallery: GalleryImageType[] = [
+  {
+    id: 1,
+    title: "Annual Sports Day Opening Ceremony",
+    description: "Students and faculty marching during the sports championship ceremony.",
+    category: "Sports",
+    event_name: "Annual Sports Meet",
+    image_url: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1000&q=80",
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    title: "Hackathon Coding Night",
+    description: "Teams collaborating overnight at the campus Innovation Center during the 36-hour hackathon.",
+    category: "Technical",
+    event_name: "Campus Hackathon",
+    image_url: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1000&q=80",
+    created_at: new Date(Date.now() - 8 * 86400000).toISOString(),
+  },
+  {
+    id: 3,
+    title: "Cultural Night & Music Fest",
+    description: "Student band performing live on the open-air auditorium stage.",
+    category: "Cultural",
+    event_name: "Campus Cultural Fest",
+    image_url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1000&q=80",
+    created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
+  },
+  {
+    id: 4,
+    title: "Tech Innovation Keynote Address",
+    description: "Distinguished speaker presenting artificial intelligence research insights.",
+    category: "Academic",
+    event_name: "Tech Innovation Summit",
+    image_url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1000&q=80",
+    created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
+  },
+]
+
+export async function fetchGalleryImages(): Promise<GalleryImageType[]> {
+  try {
+    const { data, error } = await supabase.from("gallery_images").select("*").order("created_at", { ascending: false })
+    if (error || !data || data.length === 0) return fallbackGallery
+    return data as GalleryImageType[]
+  } catch {
+    return fallbackGallery
+  }
+}
+
+export async function createGalleryImage(image: Omit<GalleryImageType, "id" | "created_at">) {
+  try {
+    const { data, error } = await supabase.from("gallery_images").insert([image]).select().single()
+    if (error) return { error: error.message }
+    return { data: data as GalleryImageType }
+  } catch (err: any) {
+    return { error: err.message }
+  }
+}
