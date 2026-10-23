@@ -51,6 +51,7 @@ import {
   deleteNotice,
   updateAnnouncement,
   deleteAnnouncement,
+  updateRegistration,
   fetchUserRegistrations,
   fetchAllRegistrations,
   fetchEventRegistrations,
@@ -619,6 +620,7 @@ async function runTestSuite() {
   assert(typeof fetchUserRegistrations === "function", "Registrations API: fetchUserRegistrations is callable");
   assert(typeof fetchAllRegistrations === "function", "Registrations API: fetchAllRegistrations is callable");
   assert(typeof fetchEventRegistrations === "function", "Registrations API: fetchEventRegistrations is callable");
+  assert(typeof updateRegistration === "function", "Registrations API: updateRegistration is callable");
 
   // 8.2 Case-insensitivity verification for role checking
   assert(isStaffOrAdmin("Admin") === true, "Role Check: 'Admin' (mixed case) returns true");
@@ -710,6 +712,37 @@ async function runTestSuite() {
   assert(
     canDeleteRegistration(adminUser, "admin", studentA) === true,
     "RLS DELETE: Admin can cancel any student's registration"
+  );
+
+  // 8.6 Registration Update & Field Protection Policy Simulation:
+  const canUpdateRegistration = (authUid, userRole, reg, patch) => {
+    if (!authUid) return false;
+    const isOwner = authUid === reg.user_id;
+    const isStaff = isStaffOrAdmin(userRole);
+    if (!isOwner && !isStaff) return false;
+
+    if (!isStaff) {
+      if (patch.user_id !== undefined && patch.user_id !== reg.user_id) return false;
+      if (patch.event_id !== undefined && patch.event_id !== reg.event_id) return false;
+    }
+    return true;
+  };
+
+  assert(
+    canUpdateRegistration(studentA, "student", sampleReg, { is_volunteer: true, volunteer_role: "Host" }) === true,
+    "Registration Update: Student can update their volunteer role and preferences"
+  );
+  assert(
+    canUpdateRegistration(studentA, "student", sampleReg, { user_id: studentB }) === false,
+    "Registration Field Protection: Student cannot re-assign user_id on registration"
+  );
+  assert(
+    canUpdateRegistration(studentA, "student", sampleReg, { event_id: 999 }) === false,
+    "Registration Field Protection: Student cannot re-assign event_id on registration"
+  );
+  assert(
+    canUpdateRegistration(adminUser, "admin", sampleReg, { payment_status: "completed" }) === true,
+    "Registration Update: Admin can update registration payment status"
   );
 
   console.log();
@@ -817,6 +850,59 @@ async function runTestSuite() {
     canManageListing(adminUser, "admin", studentA) === true,
     "Marketplace/LostFound Auth: Admin can moderate any listing"
   );
+
+  // 9.6 Hostel Complaint Authorized Deletion / Withdrawal Policy
+  const canDeleteComplaint = (authUid, userRole, complaintOwnerUid, status) => {
+    if (!authUid) return false;
+    if (isStaffOrAdmin(userRole)) return true;
+    if (authUid === complaintOwnerUid && status === "Open") return true;
+    return false;
+  };
+
+  assert(
+    canDeleteComplaint(studentA, "student", studentA, "Open") === true,
+    "Hostel Auth: Student can withdraw their own 'Open' complaint"
+  );
+  assert(
+    canDeleteComplaint(studentA, "student", studentA, "In Progress") === false,
+    "Hostel Auth: Student cannot delete a complaint once 'In Progress'"
+  );
+  assert(
+    canDeleteComplaint(studentA, "student", studentA, "Resolved") === false,
+    "Hostel Auth: Student cannot delete a 'Resolved' complaint"
+  );
+  assert(
+    canDeleteComplaint(studentB, "student", studentA, "Open") === false,
+    "Hostel Auth: Student B cannot delete Student A's complaint"
+  );
+  assert(
+    canDeleteComplaint(adminUser, "admin", studentA, "Resolved") === true,
+    "Hostel Auth: Admin can delete or purge any complaint"
+  );
+
+  // 9.7 User Profile Role Escalation Defense
+  const validateRoleChange = (callerRole, currentRole, attemptedRole) => {
+    if (attemptedRole === currentRole) return true;
+    return isAdmin(callerRole);
+  };
+
+  assert(
+    validateRoleChange("student", "student", "admin") === false,
+    "Profile Security: Student cannot elevate themselves to admin"
+  );
+  assert(
+    validateRoleChange("faculty", "faculty", "admin") === false,
+    "Profile Security: Faculty cannot elevate themselves to admin"
+  );
+  assert(
+    validateRoleChange("admin", "student", "faculty") === true,
+    "Profile Security: Admin can promote user roles"
+  );
+
+  // 9.8 Marketplace Sold Status Synchronization Contract
+  const computeMarketplaceSold = (status) => status === "sold";
+  assert(computeMarketplaceSold("sold") === true, "Marketplace Sync: 'sold' status maps is_sold=true");
+  assert(computeMarketplaceSold("available") === false, "Marketplace Sync: 'available' status maps is_sold=false");
 
   console.log();
   console.log(

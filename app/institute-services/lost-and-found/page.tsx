@@ -38,6 +38,7 @@ import {
   updateLostFoundItem,
   updateLostFoundStatus,
   deleteLostFoundItem,
+  isStaffOrAdmin,
   type LostFoundItemType,
 } from "@/lib/supabase"
 
@@ -317,7 +318,7 @@ export default function LostAndFoundPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => {
-            const isOwnerOrAdmin = user && (user.id === item.user_id || user.role === "admin")
+            const isOwnerOrAdmin = user && (user.id === item.user_id || isStaffOrAdmin(user.role))
             const isResolved = item.status === "claimed" || item.status === "resolved"
 
             return (

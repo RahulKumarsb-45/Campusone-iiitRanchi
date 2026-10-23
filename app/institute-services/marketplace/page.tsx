@@ -38,6 +38,7 @@ import {
   updateMarketplaceItem,
   updateMarketplaceStatus,
   deleteMarketplaceItem,
+  isStaffOrAdmin,
   type MarketplaceItemType,
 } from "@/lib/supabase"
 
@@ -324,7 +325,7 @@ export default function MarketplacePage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => {
-            const isOwnerOrAdmin = user && (user.id === item.user_id || user.role === "admin")
+            const isOwnerOrAdmin = user && (user.id === item.user_id || isStaffOrAdmin(user.role))
             const isSold = item.status === "sold"
 
             return (

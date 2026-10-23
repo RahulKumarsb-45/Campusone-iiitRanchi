@@ -684,6 +684,32 @@ export async function cancelRegistration(eventId: number, userId: string) {
   }
 }
 
+export async function updateRegistration(
+  id: number,
+  updates: Partial<Omit<RegistrationType, "id" | "event_id" | "user_id">> & {
+    user_id?: never;
+    event_id?: never;
+  },
+) {
+  try {
+    const { user_id, event_id, id: _, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("registrations")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select();
+
+    if (error) {
+      console.error("Error updating registration:", error.message);
+      return { error: error.message };
+    }
+    return { data: data ? (data[0] as RegistrationType) : null };
+  } catch (err: any) {
+    console.error("updateRegistration error:", err.message);
+    return { error: err.message || "Failed to update registration" };
+  }
+}
+
 export type QueryResult<T> = T[] & {
   error?: string | null;
 };
@@ -1652,9 +1678,10 @@ export async function createMarketplaceItem(
   item: Omit<MarketplaceItemType, "id" | "created_at">,
 ) {
   try {
+    const is_sold = item.status === "sold";
     const { data, error } = await supabase
       .from("marketplace_items")
-      .insert([item])
+      .insert([{ ...item, is_sold }])
       .select()
       .single();
     if (error) return { error: error.message };
@@ -1669,9 +1696,10 @@ export async function updateMarketplaceStatus(
   status: "available" | "sold",
 ) {
   try {
+    const is_sold = status === "sold";
     const { data, error } = await supabase
       .from("marketplace_items")
-      .update({ status })
+      .update({ status, is_sold })
       .eq("id", id)
       .select()
       .single();
@@ -1688,6 +1716,9 @@ export async function updateMarketplaceItem(
 ) {
   try {
     const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    if (safeUpdates.status !== undefined) {
+      safeUpdates.is_sold = safeUpdates.status === "sold";
+    }
     const { data, error } = await supabase
       .from("marketplace_items")
       .update(safeUpdates)
