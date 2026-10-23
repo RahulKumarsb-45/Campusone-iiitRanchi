@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { ShoppingBag, Search, Plus, Tag, Phone, ArrowLeft, Trash2, CheckCircle2, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -72,15 +73,24 @@ export default function MarketplacePage() {
     status: "available" as "available" | "sold",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchMarketplaceItems()
     setItems(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchMarketplaceItems().then((res) => {
+      if (isMounted) {
+        setItems(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = items.filter((item) => {
@@ -299,8 +309,14 @@ export default function MarketplacePage() {
               <Card key={item.id} className="border-border flex flex-col justify-between overflow-hidden hover:shadow-md transition-shadow">
                 <div>
                   {item.image && (
-                    <div className="h-44 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                      <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                    <div className="relative h-44 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover"
+                      />
                     </div>
                   )}
 

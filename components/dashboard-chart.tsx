@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 import {
   Bar,
   BarChart,
@@ -20,12 +20,10 @@ interface DashboardChartProps {
   emptyMessage?: string
 }
 
-export function DashboardChart({ type, data = [], emptyMessage }: DashboardChartProps) {
-  const [mounted, setMounted] = useState(false)
+const emptySubscribe = () => () => {}
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+export function DashboardChart({ type, data = [], emptyMessage }: DashboardChartProps) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
 
   if (!mounted) {
     return <div className="h-[280px] w-full animate-pulse rounded-md bg-muted/40"></div>

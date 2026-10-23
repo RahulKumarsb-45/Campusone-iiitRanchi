@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { format } from "date-fns"
 import { motion } from "framer-motion"
 import { Calendar, Clock, Heart, MapPin, Share2 } from "lucide-react"
@@ -123,13 +124,15 @@ export function EventCard({ event, className }: EventCardProps) {
           <div>
             <div className="relative h-48 overflow-hidden bg-neutral-900 group">
               <Link href={`/events/${event.id}`} className="block h-full w-full cursor-pointer">
-                <img
+                <Image
                   src={imgSrc}
                   alt={event.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   onError={() => {
                     setImgSrc(getFallbackEventImage(event.category, event.title, event.description, event.tags))
                   }}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               </Link>
               <div className="absolute right-2 top-2 flex gap-2">

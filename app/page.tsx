@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import {
   ArrowRight,
   Briefcase,
@@ -349,8 +350,14 @@ export default async function HomePage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {clubs.slice(0, 3).map((club) => (
             <div key={club.id} className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-md transition-shadow">
-              <div className="h-40 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                <img src={club.image} alt={club.name} className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
+              <div className="relative h-40 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <Image
+                  src={club.image}
+                  alt={club.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-300 hover:scale-105"
+                />
               </div>
               <div className="p-5">
                 <div className="flex items-center justify-between mb-2">

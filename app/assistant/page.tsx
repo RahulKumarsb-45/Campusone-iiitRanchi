@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   Bot,
@@ -67,15 +67,16 @@ export default function AssistantPage() {
     scrollToBottom()
   }, [messages, loading])
 
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = useCallback(async (textToSend?: string) => {
     const text = (textToSend || input).trim()
     if (!text || loading) return
 
+    const now = Date.now()
     const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${now}`,
       sender: "user",
       text,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      timestamp: new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     }
 
     setMessages((prev) => [...prev, userMsg])
@@ -95,15 +96,16 @@ export default function AssistantPage() {
 
       const data: AssistantResponse = await res.json()
 
+      const assistantNow = Date.now()
       const assistantMsg: ChatMessage = {
-        id: `assistant-${Date.now()}`,
+        id: `assistant-${assistantNow}`,
         sender: "assistant",
         text: data.answer,
         citations: data.citations,
         confidence: data.confidence,
         isRefusal: data.isRefusal,
         latencyMs: data.latencyMs,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date(assistantNow).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       }
 
       setMessages((prev) => [...prev, assistantMsg])
@@ -113,17 +115,18 @@ export default function AssistantPage() {
         description: err.message || "Could not retrieve response",
         variant: "destructive",
       })
+      const errNow = Date.now()
       const errorMsg: ChatMessage = {
-        id: `assistant-err-${Date.now()}`,
+        id: `assistant-err-${errNow}`,
         sender: "assistant",
         text: "I encountered a network issue communicating with the campus verification service. Please try again.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        timestamp: new Date(errNow).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       }
       setMessages((prev) => [...prev, errorMsg])
     } finally {
       setLoading(false)
     }
-  }
+  }, [input, loading])
 
   const handleFeedback = (msgId: string, type: "helpful" | "not-helpful") => {
     setMessages((prev) =>

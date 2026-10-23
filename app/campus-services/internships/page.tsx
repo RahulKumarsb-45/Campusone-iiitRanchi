@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Briefcase, Search, Plus, MapPin, Calendar, ExternalLink, ArrowLeft, Clock, Pencil, Trash2 } from "lucide-react"
 
@@ -73,15 +73,24 @@ export default function InternshipsPage() {
     apply_link: "",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchInternships()
     setInternships(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchInternships().then((res) => {
+      if (isMounted) {
+        setInternships(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = internships.filter(

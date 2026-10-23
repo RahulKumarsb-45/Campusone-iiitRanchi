@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Building2, Search, Plus, ArrowLeft, Calendar, ShieldCheck, Utensils } from "lucide-react"
 
@@ -40,15 +40,24 @@ export default function HostelNoticesPage() {
     target_audience: "Hostel Residents",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchNotices("hostel")
     setNotices(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchNotices("hostel").then((res) => {
+      if (isMounted) {
+        setNotices(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = notices.filter((n) => {

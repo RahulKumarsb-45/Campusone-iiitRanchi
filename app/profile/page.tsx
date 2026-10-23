@@ -23,34 +23,47 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [registrations, setRegistrations] = useState<RegistrationType[]>([])
 
-  const [formData, setFormData] = useState({
-    name: "",
-    department: "",
-    year: "",
-    roll_number: "",
-    position: "",
-    phone: "",
-    address: "",
-    bio: "",
-  })
+  const [formData, setFormData] = useState(() => ({
+    name: user?.name || "",
+    department: user?.department || "",
+    year: user?.year || "",
+    roll_number: user?.roll_number || "",
+    position: user?.position || "",
+    phone: user?.phone || "",
+    address: user?.address || "",
+    bio: user?.bio || "",
+  }))
+
+  const [prevUserId, setPrevUserId] = useState(user?.id)
+  if (user && user.id !== prevUserId) {
+    setPrevUserId(user.id)
+    setFormData({
+      name: user.name || "",
+      department: user.department || "",
+      year: user.year || "",
+      roll_number: user.roll_number || "",
+      position: user.position || "",
+      phone: user.phone || "",
+      address: user.address || "",
+      bio: user.bio || "",
+    })
+  }
 
   useEffect(() => {
+    let isMounted = true
     if (!authLoading) {
       if (!user) {
         router.push("/auth/login?next=/profile")
       } else {
-        setFormData({
-          name: user.name || "",
-          department: user.department || "",
-          year: user.year || "",
-          roll_number: user.roll_number || "",
-          position: user.position || "",
-          phone: user.phone || "",
-          address: user.address || "",
-          bio: user.bio || "",
+        fetchUserRegistrations(user.id).then((regs) => {
+          if (isMounted) {
+            setRegistrations(regs || [])
+          }
         })
-        fetchUserRegistrations(user.id).then((regs) => setRegistrations(regs || []))
       }
+    }
+    return () => {
+      isMounted = false
     }
   }, [user, authLoading, router])
 

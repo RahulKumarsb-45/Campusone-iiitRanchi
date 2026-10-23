@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import {
   Users,
   Search,
@@ -101,7 +102,7 @@ export default function ClubsPage() {
     tags: "",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetchClubs()
@@ -109,10 +110,23 @@ export default function ClubsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchClubs()
+      .then((res) => {
+        if (isMounted) {
+          setClubs(res)
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   // Check if current user has permission to edit or delete a club
@@ -426,21 +440,14 @@ export default function ClubsPage() {
                   onClick={() => setSelectedClub(club)}
                 >
                   <div className="relative h-44 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                    <img
+                    <Image
                       src={clubImage}
                       alt={`${club.name} banner`}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        e.currentTarget.src = getFallbackClubImage(
-                          club.name,
-                          club.description,
-                          club.category,
-                          club.code,
-                          club.tags
-                        )
-                      }}
+                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute top-2.5 right-2.5">
+                    <div className="absolute top-2.5 right-2.5 z-10">
                       <span className="rounded bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
                         {club.code}
                       </span>
@@ -522,19 +529,12 @@ export default function ClubsPage() {
         <Dialog open={!!selectedClub} onOpenChange={() => setSelectedClub(null)}>
           <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden">
             <div className="relative h-44 w-full bg-neutral-100 dark:bg-neutral-800">
-              <img
+              <Image
                 src={getClubImage(selectedClub)}
                 alt={selectedClub.name}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = getFallbackClubImage(
-                    selectedClub.name,
-                    selectedClub.description,
-                    selectedClub.category,
-                    selectedClub.code,
-                    selectedClub.tags
-                  )
-                }}
+                fill
+                sizes="520px"
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
               <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
@@ -542,7 +542,7 @@ export default function ClubsPage() {
                   <Badge className="bg-white/90 text-black text-[10px] font-bold mb-1">
                     {selectedClub.category}
                   </Badge>
-                  <h2 className="text-xl font-black text-white">{selectedClub.name}</h2>
+                  <DialogTitle className="text-xl font-black text-white">{selectedClub.name}</DialogTitle>
                 </div>
                 <span className="rounded bg-black/60 px-2 py-0.5 text-xs font-bold text-white border border-white/20">
                   {selectedClub.code}
@@ -735,10 +735,12 @@ export default function ClubsPage() {
                 placeholder="https://images.unsplash.com/... (optional)"
               />
               <div className="relative mt-2 h-24 w-full overflow-hidden rounded-md border border-border bg-neutral-100 dark:bg-neutral-800">
-                <img
+                <Image
                   src={getCreatePreviewUrl()}
                   alt="Club preview"
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="400px"
+                  className="object-cover"
                   onError={() => {
                     setCreateImageError(true)
                   }}
@@ -922,10 +924,12 @@ export default function ClubsPage() {
                   placeholder="https://images.unsplash.com/... (optional)"
                 />
                 <div className="relative mt-2 h-24 w-full overflow-hidden rounded-md border border-border bg-neutral-100 dark:bg-neutral-800">
-                  <img
+                  <Image
                     src={getEditPreviewUrl()}
                     alt="Club preview"
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="400px"
+                    className="object-cover"
                     onError={() => {
                       setEditImageError(true)
                     }}

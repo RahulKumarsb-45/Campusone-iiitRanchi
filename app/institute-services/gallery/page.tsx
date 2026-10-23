@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Image as ImageIcon, Plus, ArrowLeft, Calendar, Tag, ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -40,15 +41,24 @@ export default function GalleryPage() {
     image_url: "",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchGalleryImages()
     setImages(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchGalleryImages().then((res) => {
+      if (isMounted) {
+        setImages(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = images.filter((img) => categoryFilter === "All" || img.category === categoryFilter)
@@ -148,12 +158,14 @@ export default function GalleryPage() {
               className="border-border overflow-hidden cursor-pointer group hover:shadow-lg transition-all"
             >
               <div className="h-48 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800 relative">
-                <img
+                <Image
                   src={item.image_url}
                   alt={item.title}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute top-2 right-2">
+                <div className="absolute top-2 right-2 z-10">
                   <Badge variant="secondary" className="text-[10px] bg-black/60 text-white backdrop-blur border-none">
                     {item.category}
                   </Badge>
@@ -177,8 +189,18 @@ export default function GalleryPage() {
       {previewImage && (
         <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
           <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border-none bg-black text-white">
-            <div className="max-h-[70vh] overflow-hidden flex items-center justify-center bg-black">
-              <img src={previewImage.image_url} alt={previewImage.title} className="max-h-[70vh] w-auto object-contain" />
+            <DialogHeader className="sr-only">
+              <DialogTitle>{previewImage.title}</DialogTitle>
+              <DialogDescription>{previewImage.description || previewImage.title}</DialogDescription>
+            </DialogHeader>
+            <div className="relative h-[60vh] max-h-[70vh] w-full overflow-hidden flex items-center justify-center bg-black">
+              <Image
+                src={previewImage.image_url}
+                alt={previewImage.title}
+                fill
+                sizes="700px"
+                className="object-contain"
+              />
             </div>
             <div className="p-5 space-y-1">
               <div className="flex items-center justify-between">

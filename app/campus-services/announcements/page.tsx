@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Megaphone, Search, Plus, ArrowLeft, Calendar, AlertCircle, Pencil, Trash2 } from "lucide-react"
 
@@ -64,15 +64,24 @@ export default function AnnouncementsPage() {
     urgent: false,
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchAnnouncements()
     setAnnouncements(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchAnnouncements().then((res) => {
+      if (isMounted) {
+        setAnnouncements(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = announcements.filter(

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   Wrench,
@@ -81,7 +81,7 @@ export default function HostelComplaintsPage() {
     description: "",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const isStaff = isStaffOrAdmin(user?.role)
     const res = await fetchHostelComplaints({
@@ -91,13 +91,27 @@ export default function HostelComplaintsPage() {
     })
     setComplaints(res)
     setLoading(false)
-  }
+  }, [user?.role, user?.id, statusFilter])
 
   useEffect(() => {
+    let isMounted = true
     if (!authLoading) {
-      loadData()
+      const isStaff = isStaffOrAdmin(user?.role)
+      fetchHostelComplaints({
+        userId: user?.id,
+        isStaff,
+        status: statusFilter,
+      }).then((res) => {
+        if (isMounted) {
+          setComplaints(res)
+          setLoading(false)
+        }
+      })
     }
-  }, [user, authLoading, statusFilter])
+    return () => {
+      isMounted = false
+    }
+  }, [user?.role, user?.id, authLoading, statusFilter])
 
   const filtered = complaints.filter((c) => {
     const matchesSearch =
@@ -655,7 +669,7 @@ export default function HostelComplaintsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Withdraw this complaint?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel ticket #{showCancelAlert}? This will remove it from the warden's repair queue.
+              Are you sure you want to cancel ticket #{showCancelAlert}? This will remove it from the warden&apos;s repair queue.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

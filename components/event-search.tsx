@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   CommandDialog,
@@ -22,54 +23,54 @@ interface Event {
   category: string
 }
 
-export function EventSearch() {
-  const [open, setOpen] = useState(false)
-  const [searchResults, setSearchResults] = useState<Event[]>([])
-  const [query, setQuery] = useState("")
+// Mock events data
+const SEARCH_EVENTS: Event[] = [
+  {
+    id: 1,
+    title: "Tech Innovation Summit",
+    description: "Join industry leaders to explore cutting-edge technologies and innovations.",
+    date: "2025-04-15T10:00:00",
+    location: "Main Auditorium",
+    category: "seminars",
+  },
+  {
+    id: 2,
+    title: "Annual Sports Tournament",
+    description: "Compete in various sports activities and win exciting prizes.",
+    date: "2025-04-20T09:00:00",
+    location: "University Sports Complex",
+    category: "sports",
+  },
+  {
+    id: 3,
+    title: "Web Development Workshop",
+    description: "Learn modern web development techniques with hands-on exercises.",
+    date: "2025-04-25T14:00:00",
+    location: "Computer Lab 101",
+    category: "workshops",
+  },
+  {
+    id: 4,
+    title: "Cultural Festival",
+    description: "Celebrate diversity through music, dance, and art performances.",
+    date: "2025-05-05T18:00:00",
+    location: "University Amphitheater",
+    category: "cultural",
+  },
+  {
+    id: 5,
+    title: "Career Fair 2025",
+    description: "Connect with top employers and explore career opportunities.",
+    date: "2025-05-10T10:00:00",
+    location: "University Hall",
+    category: "seminars",
+  },
+]
 
-  // Mock events data
-  const events: Event[] = [
-    {
-      id: 1,
-      title: "Tech Innovation Summit",
-      description: "Join industry leaders to explore cutting-edge technologies and innovations.",
-      date: "2025-04-15T10:00:00",
-      location: "Main Auditorium",
-      category: "seminars",
-    },
-    {
-      id: 2,
-      title: "Annual Sports Tournament",
-      description: "Compete in various sports activities and win exciting prizes.",
-      date: "2025-04-20T09:00:00",
-      location: "University Sports Complex",
-      category: "sports",
-    },
-    {
-      id: 3,
-      title: "Web Development Workshop",
-      description: "Learn modern web development techniques with hands-on exercises.",
-      date: "2025-04-25T14:00:00",
-      location: "Computer Lab 101",
-      category: "workshops",
-    },
-    {
-      id: 4,
-      title: "Cultural Festival",
-      description: "Celebrate diversity through music, dance, and art performances.",
-      date: "2025-05-05T18:00:00",
-      location: "University Amphitheater",
-      category: "cultural",
-    },
-    {
-      id: 5,
-      title: "Career Fair 2025",
-      description: "Connect with top employers and explore career opportunities.",
-      date: "2025-05-10T10:00:00",
-      location: "University Hall",
-      category: "seminars",
-    },
-  ]
+export function EventSearch() {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -83,19 +84,16 @@ export function EventSearch() {
     return () => document.removeEventListener("keydown", down)
   }, [])
 
-  useEffect(() => {
-    if (query) {
-      const filtered = events.filter(
-        (event) =>
-          event.title.toLowerCase().includes(query.toLowerCase()) ||
-          event.description.toLowerCase().includes(query.toLowerCase()) ||
-          event.category.toLowerCase().includes(query.toLowerCase()) ||
-          event.location.toLowerCase().includes(query.toLowerCase()),
-      )
-      setSearchResults(filtered)
-    } else {
-      setSearchResults([])
-    }
+  const searchResults = useMemo(() => {
+    if (!query.trim()) return []
+    const q = query.toLowerCase()
+    return SEARCH_EVENTS.filter(
+      (event) =>
+        event.title.toLowerCase().includes(q) ||
+        event.description.toLowerCase().includes(q) ||
+        event.category.toLowerCase().includes(q) ||
+        event.location.toLowerCase().includes(q),
+    )
   }, [query])
 
   return (
@@ -122,7 +120,7 @@ export function EventSearch() {
                 <CommandItem
                   key={event.id}
                   onSelect={() => {
-                    window.location.href = `/events/${event.id}`
+                    router.push(`/events/${event.id}`)
                     setOpen(false)
                   }}
                   className="flex flex-col items-start py-3"

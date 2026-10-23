@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { motion } from "framer-motion"
@@ -77,6 +78,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isVolunteer, setIsVolunteer] = useState(false)
   const [selectedVolunteerRole, setSelectedVolunteerRole] = useState("")
+  const [now] = useState(() => Date.now())
 
   useEffect(() => {
     async function loadData() {
@@ -257,7 +259,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   const eventDate = new Date(event.date)
   const isFull = event.max_participants > 0 && event.current_participants >= event.max_participants
-  const isPast = eventDate.getTime() < Date.now()
+  const isPast = eventDate.getTime() < now
   const isCreatorOrAdmin = user && (user.id === event.user_id || isStaffOrAdmin(user.role))
 
   return (
@@ -305,19 +307,14 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           {/* Main Content Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Event Banner Image */}
-            <div className="overflow-hidden rounded-2xl border border-border bg-neutral-900 max-h-[420px]">
-              <img
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-neutral-900 h-[280px] sm:h-[380px] w-full">
+              <Image
                 src={getEventImage(event)}
                 alt={event.title}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = getFallbackEventImage(
-                    event.category,
-                    event.title,
-                    event.description,
-                    event.tags
-                  )
-                }}
-                className="w-full h-full object-cover max-h-[420px]"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 66vw"
+                className="object-cover"
               />
             </div>
 
@@ -613,7 +610,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{event.title}" and remove all registered participant records.
+              This will permanently delete &ldquo;{event.title}&rdquo; and remove all registered participant records.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

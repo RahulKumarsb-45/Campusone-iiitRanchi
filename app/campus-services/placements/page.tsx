@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { GraduationCap, Search, Plus, MapPin, Calendar, ExternalLink, ArrowLeft, Building2, Pencil, Trash2 } from "lucide-react"
 
@@ -64,15 +64,24 @@ export default function PlacementsPage() {
     apply_link: "",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchPlacements()
     setPlacements(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchPlacements().then((res) => {
+      if (isMounted) {
+        setPlacements(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = placements.filter(

@@ -127,7 +127,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     }
 
     load()
-  }, [eventId, user, router])
+  }, [eventId, user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

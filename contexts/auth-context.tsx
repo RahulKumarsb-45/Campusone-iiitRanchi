@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { supabase, type UserType } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Explicit profile refresh function: re-queries public.users for the latest role and fields
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
       const {
         data: { session },
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Error in refreshProfile:", err)
     }
-  }
+  }, [])
 
   useEffect(() => {
     // Check active session and set user
@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.removeEventListener("focus", handleFocus)
       }
     }
-  }, [])
+  }, [refreshProfile])
 
   const signIn = async (email: string, password: string) => {
     try {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Bell, Search, Plus, ArrowLeft, Calendar, Building, AlertTriangle, Pencil, Trash2 } from "lucide-react"
 
@@ -70,15 +70,24 @@ export default function CollegeNoticesPage() {
     file_url: "",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchNotices("college")
     setNotices(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchNotices("college").then((res) => {
+      if (isMounted) {
+        setNotices(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = notices.filter((n) => {

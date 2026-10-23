@@ -421,8 +421,8 @@ export async function fetchEvents(options?: {
 
     const { data, error } = await query;
 
-    if (error || !data || data.length === 0) {
-      // Graceful fallback to verified sample events
+    if (error) {
+      // Graceful fallback to verified sample events only when query fails
       let filtered = [...fallbackEvents];
       if (options?.category && options.category !== "all") {
         filtered = filtered.filter(
@@ -442,7 +442,7 @@ export async function fetchEvents(options?: {
       }));
     }
 
-    return (data as EventType[]).map((e) => ({
+    return (data || []).map((e) => ({
       ...e,
       image: getEventImage(e),
     }));
@@ -612,11 +612,22 @@ export async function registerForEvent(
       return { error: error.message };
     }
 
-    // 3. Increment current participants via secure RPC
+    // 3. Increment current participants via secure RPC with fallback
     try {
       const rpcRes = await supabase.rpc("increment_participants", { event_id: eventId });
       if (rpcRes.error) {
         console.warn("increment_participants RPC warning:", rpcRes.error.message);
+        const { data: cur } = await supabase
+          .from("events")
+          .select("current_participants")
+          .eq("id", eventId)
+          .maybeSingle();
+        if (cur) {
+          await supabase
+            .from("events")
+            .update({ current_participants: (cur.current_participants || 0) + 1 })
+            .eq("id", eventId);
+        }
       }
     } catch (rpcErr: any) {
       console.warn("increment_participants exception:", rpcErr?.message);
@@ -640,11 +651,22 @@ export async function cancelRegistration(eventId: number, userId: string) {
       return { error: error.message };
     }
 
-    // Decrement participants count via secure RPC
+    // Decrement participants count via secure RPC with fallback
     try {
       const rpcRes = await supabase.rpc("decrement_participants", { event_id: eventId });
       if (rpcRes.error) {
         console.warn("decrement_participants RPC warning:", rpcRes.error.message);
+        const { data: cur } = await supabase
+          .from("events")
+          .select("current_participants")
+          .eq("id", eventId)
+          .maybeSingle();
+        if (cur) {
+          await supabase
+            .from("events")
+            .update({ current_participants: Math.max((cur.current_participants || 1) - 1, 0) })
+            .eq("id", eventId);
+        }
       }
     } catch (rpcErr: any) {
       console.warn("decrement_participants exception:", rpcErr?.message);
@@ -869,7 +891,7 @@ export async function fetchClubs(category?: string): Promise<ClubType[]> {
       query = query.eq("category", category);
     }
     const { data, error } = await query;
-    if (error || !data || data.length === 0) {
+    if (error) {
       if (category && category !== "All") {
         return fallbackClubs
           .filter((c) => c.category.toLowerCase() === category.toLowerCase())
@@ -877,7 +899,7 @@ export async function fetchClubs(category?: string): Promise<ClubType[]> {
       }
       return fallbackClubs.map((c) => ({ ...c, image: getClubImage(c) }));
     }
-    return (data as ClubType[]).map((c) => ({
+    return (data || []).map((c) => ({
       ...c,
       image: getClubImage(c),
     }));
@@ -1026,10 +1048,15 @@ export async function fetchInternships(): Promise<InternshipType[]> {
       .from("internships")
       .select("*")
       .order("deadline", { ascending: true });
-    if (error || !data || data.length === 0) return fallbackInternships;
-    return data as InternshipType[];
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchInternships DB error:", error.message);
+      }
+      return [];
+    }
+    return (data as InternshipType[]) || [];
   } catch {
-    return fallbackInternships;
+    return [];
   }
 }
 
@@ -1125,10 +1152,15 @@ export async function fetchPlacements(): Promise<PlacementType[]> {
       .from("placements")
       .select("*")
       .order("drive_date", { ascending: true });
-    if (error || !data || data.length === 0) return fallbackPlacements;
-    return data as PlacementType[];
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchPlacements DB error:", error.message);
+      }
+      return [];
+    }
+    return (data as PlacementType[]) || [];
   } catch {
-    return fallbackPlacements;
+    return [];
   }
 }
 
@@ -1238,17 +1270,15 @@ export async function fetchNotices(
       query = query.eq("notice_type", noticeType);
     }
     const { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (noticeType) {
-        return fallbackNotices.filter((n) => n.notice_type === noticeType);
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchNotices DB error:", error.message);
       }
-      return fallbackNotices;
+      return [];
     }
-    return data as NoticeType[];
+    return (data as NoticeType[]) || [];
   } catch {
-    return noticeType
-      ? fallbackNotices.filter((n) => n.notice_type === noticeType)
-      : fallbackNotices;
+    return [];
   }
 }
 
@@ -1326,10 +1356,15 @@ export async function fetchAnnouncements(): Promise<AnnouncementType[]> {
       .from("announcements")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error || !data || data.length === 0) return fallbackAnnouncements;
-    return data as AnnouncementType[];
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchAnnouncements DB error:", error.message);
+      }
+      return [];
+    }
+    return (data as AnnouncementType[]) || [];
   } catch {
-    return fallbackAnnouncements;
+    return [];
   }
 }
 
@@ -1426,10 +1461,15 @@ export async function fetchLostFoundItems(): Promise<LostFoundItemType[]> {
       .from("lost_found_items")
       .select("*")
       .order("date", { ascending: false });
-    if (error || !data || data.length === 0) return fallbackLostFound;
-    return data as LostFoundItemType[];
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchLostFoundItems DB error:", error.message);
+      }
+      return [];
+    }
+    return (data as LostFoundItemType[]) || [];
   } catch {
-    return fallbackLostFound;
+    return [];
   }
 }
 
@@ -1552,10 +1592,15 @@ export async function fetchMarketplaceItems(): Promise<MarketplaceItemType[]> {
       .from("marketplace_items")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error || !data || data.length === 0) return fallbackMarketplace;
-    return data as MarketplaceItemType[];
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchMarketplaceItems DB error:", error.message);
+      }
+      return [];
+    }
+    return (data as MarketplaceItemType[]) || [];
   } catch {
-    return fallbackMarketplace;
+    return [];
   }
 }
 
@@ -1680,10 +1725,15 @@ export async function fetchGalleryImages(): Promise<GalleryImageType[]> {
       .from("gallery_images")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error || !data || data.length === 0) return fallbackGallery;
-    return data as GalleryImageType[];
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchGalleryImages DB error:", error.message);
+      }
+      return [];
+    }
+    return (data as GalleryImageType[]) || [];
   } catch {
-    return fallbackGallery;
+    return [];
   }
 }
 
@@ -1762,18 +1812,16 @@ export async function fetchHostelComplaints(options?: {
     }
 
     const { data, error } = await query;
-    if (error || !data || data.length === 0) {
-      if (options?.userId && !options.isStaff) {
-        return fallbackComplaints.filter(
-          (c) => c.user_id === options.userId || c.user_id === "demo-user-1",
-        );
+    if (error) {
+      if (error.code !== "PGRST205") {
+        console.warn("fetchHostelComplaints DB error:", error.message);
       }
-      return fallbackComplaints;
+      return [];
     }
 
-    return data as HostelComplaintType[];
+    return (data as HostelComplaintType[]) || [];
   } catch {
-    return fallbackComplaints;
+    return [];
   }
 }
 

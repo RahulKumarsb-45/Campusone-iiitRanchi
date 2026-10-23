@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useMemo } from "react"
 import Link from "next/link"
 import { motion, useScroll, useTransform } from "framer-motion"
 import { ArrowRight, Calendar, Sparkles, MapPin, Tag } from "lucide-react"
@@ -19,7 +19,10 @@ export function HeroSection({ featuredEvent }: HeroSectionProps) {
   const y = useTransform(scrollY, [0, 500], [0, 100])
   const opacity = useTransform(scrollY, [0, 350], [1, 0])
 
-  const eventDate = featuredEvent ? new Date(featuredEvent.date) : new Date(Date.now() + 86400000 * 3)
+  const eventDate = useMemo(() => {
+    if (featuredEvent?.date) return new Date(featuredEvent.date)
+    return new Date("2026-11-01T10:00:00Z")
+  }, [featuredEvent])
 
   return (
     <div ref={ref} className="relative min-h-[580px] overflow-hidden border-b border-border bg-neutral-950 text-white">

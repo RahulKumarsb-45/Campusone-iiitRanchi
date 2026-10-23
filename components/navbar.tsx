@@ -49,9 +49,11 @@ export function Navbar() {
   const [instituteServicesOpen, setInstituteServicesOpen] = useState(false)
 
   // Close mobile menu on route change
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname)
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname)
     setMobileMenuOpen(false)
-  }, [pathname])
+  }
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/"

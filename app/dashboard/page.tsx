@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -60,8 +60,9 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null)
   const [demoMode, setDemoMode] = useState(false)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+  const [now] = useState(() => Date.now())
 
-  const loadDashboardData = async (userId: string) => {
+  const loadDashboardData = useCallback(async (userId: string) => {
     setLoadingData(true)
     try {
       const [regs, createdRes, analyticsRes] = await Promise.all([
@@ -83,7 +84,7 @@ export default function DashboardPage() {
     } finally {
       setLoadingData(false)
     }
-  }
+  }, [])
 
   const handleToggleDemoMode = async (checked: boolean) => {
     setDemoMode(checked)
@@ -97,12 +98,37 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    let isMounted = true
     if (!authLoading) {
       if (!user) {
         router.push("/auth/login?next=/dashboard")
       } else {
-        loadDashboardData(user.id)
+        Promise.all([
+          fetchUserRegistrations(user.id),
+          supabase.from("events").select("*").eq("user_id", user.id),
+          fetchRealProductAnalytics(false),
+        ])
+          .then(([regs, createdRes, analyticsRes]) => {
+            if (!isMounted) return
+            if (regs?.error) {
+              setRegistrationError(regs.error)
+            } else {
+              setRegistrationError(null)
+            }
+            setRegistrations(regs || [])
+            setCreatedEvents((createdRes.data as EventType[]) || [])
+            setAnalytics(analyticsRes)
+            setLoadingData(false)
+          })
+          .catch((err) => {
+            if (!isMounted) return
+            console.error("Dashboard data load error:", err)
+            setLoadingData(false)
+          })
       }
+    }
+    return () => {
+      isMounted = false
     }
   }, [user, authLoading, router])
 
@@ -170,7 +196,6 @@ export default function DashboardPage() {
   if (!user) return null
 
   // Real statistics derived from database records
-  const now = Date.now()
   const totalRegistered = registrations.length
   const upcomingRegistered = registrations.filter(
     (r) => r.event && new Date(r.event.date).getTime() >= now

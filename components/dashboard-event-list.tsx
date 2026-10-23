@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { Calendar, Clock, MapPin, MoreHorizontal, Trash2, Eye, ExternalLink, AlertCircle, RefreshCw } from "lucide-react"
@@ -29,6 +30,8 @@ export function DashboardEventList({
   errorMessage,
   onRetry,
 }: DashboardEventListProps) {
+  const [now] = useState(() => Date.now())
+
   if (mode === "registrations") {
     if (errorMessage) {
       return (
@@ -86,7 +89,7 @@ export function DashboardEventList({
               const ev = reg.event
               if (!ev) return null
               const eventDate = new Date(ev.date)
-              const isPast = eventDate.getTime() < Date.now()
+              const isPast = eventDate.getTime() < now
 
               return (
                 <TableRow key={reg.id}>

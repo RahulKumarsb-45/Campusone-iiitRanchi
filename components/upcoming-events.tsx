@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { format } from "date-fns"
 import { motion } from "framer-motion"
 import { Calendar, Clock, MapPin } from "lucide-react"
@@ -109,7 +110,13 @@ export function UpcomingEvents() {
           >
             <Card className="overflow-hidden">
               <div className="relative h-48">
-                <img src={event.image || "/placeholder.svg"} alt={event.title} className="h-full w-full object-cover" />
+                <Image
+                  src={event.image || "/placeholder.svg"}
+                  alt={event.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover"
+                />
                 <div className="absolute right-2 top-2">
                   <Badge className="bg-primary/90 backdrop-blur-sm">
                     {event.category.charAt(0).toUpperCase() + event.category.slice(1)}

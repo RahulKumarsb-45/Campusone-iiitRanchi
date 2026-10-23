@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { PackageSearch, Search, Plus, MapPin, Calendar, Phone, ArrowLeft, CheckCircle2, Trash2, Pencil } from "lucide-react"
 
@@ -71,15 +71,24 @@ export default function LostAndFoundPage() {
     status: "open" as "open" | "claimed" | "resolved",
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const res = await fetchLostFoundItems()
     setItems(res)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    fetchLostFoundItems().then((res) => {
+      if (isMounted) {
+        setItems(res)
+        setLoading(false)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filtered = items.filter((item) => {

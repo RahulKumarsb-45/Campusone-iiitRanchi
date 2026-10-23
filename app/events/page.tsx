@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Filter, Plus, Search, Calendar, RefreshCw } from "lucide-react"
@@ -22,10 +22,9 @@ export default function EventsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "past">("all")
   const [sortBy, setSortBy] = useState("date-asc")
-  const [filteredEvents, setFilteredEvents] = useState<EventType[]>([])
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     setLoading(true)
     setErrorMsg(null)
     try {
@@ -37,16 +36,33 @@ export default function EventsPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    loadEvents()
   }, [])
 
-  // Filter and sort events based on search, categories, and status
   useEffect(() => {
-    const now = new Date().getTime()
+    let isMounted = true
+    fetchEvents()
+      .then((data) => {
+        if (isMounted) {
+          setEvents(data)
+          setLoading(false)
+        }
+      })
+      .catch((err: any) => {
+        if (isMounted) {
+          console.error("Failed to fetch events:", err)
+          setErrorMsg(err?.message || "Failed to load campus events. Please try again.")
+          setLoading(false)
+        }
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
+  const [now] = useState(() => Date.now())
+
+  // Filter and sort events based on search, categories, and status
+  const filteredEvents = useMemo(() => {
     const filtered = events.filter((event) => {
       const matchesSearch =
         searchQuery === "" ||
@@ -80,7 +96,7 @@ export default function EventsPage() {
     })
 
     // Sort events
-    const sorted = [...filtered].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
 
@@ -97,9 +113,7 @@ export default function EventsPage() {
           return 0
       }
     })
-
-    setFilteredEvents(sorted)
-  }, [events, searchQuery, selectedCategories, statusFilter, sortBy])
+  }, [events, searchQuery, selectedCategories, statusFilter, sortBy, now])
 
   const categories = [
     { id: "workshops", label: "Workshops" },
