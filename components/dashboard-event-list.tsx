@@ -165,6 +165,29 @@ export function DashboardEventList({
   }
 
   // Mode: Created Events
+  if (errorMessage) {
+    return (
+      <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center text-destructive">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2 opacity-90" />
+        <p className="text-sm font-semibold text-destructive">Could not load campus events</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-md">
+          {errorMessage}
+        </p>
+        {onRetry && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRetry}
+            className="mt-4 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry Connection
+          </Button>
+        )}
+      </div>
+    )
+  }
+
   if (createdEvents.length === 0) {
     return (
       <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center">

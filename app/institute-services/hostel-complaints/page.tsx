@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   ChevronRight,
   Filter,
+  RefreshCw,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -58,6 +59,7 @@ export default function HostelComplaintsPage() {
   const { user, loading: authLoading } = useAuth()
   const [complaints, setComplaints] = useState<HostelComplaintType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("All")
   const [categoryFilter, setCategoryFilter] = useState("All")
@@ -83,13 +85,19 @@ export default function HostelComplaintsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const isStaff = isStaffOrAdmin(user?.role)
     const res = await fetchHostelComplaints({
       userId: user?.id,
       isStaff,
       status: statusFilter,
     })
-    setComplaints(res)
+    if (res.error) {
+      setLoadError(res.error)
+      setComplaints([])
+    } else {
+      setComplaints(res)
+    }
     setLoading(false)
   }, [user?.role, user?.id, statusFilter])
 
@@ -103,7 +111,12 @@ export default function HostelComplaintsPage() {
         status: statusFilter,
       }).then((res) => {
         if (isMounted) {
-          setComplaints(res)
+          if (res.error) {
+            setLoadError(res.error)
+            setComplaints([])
+          } else {
+            setComplaints(res)
+          }
           setLoading(false)
         }
       })
@@ -364,6 +377,16 @@ export default function HostelComplaintsPage() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-32 rounded-xl border border-border bg-muted/40 animate-pulse" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center text-destructive">
+          <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+          <h3 className="font-semibold text-base">Unable to load hostel complaints</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={loadData} className="mt-4 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-border p-8 text-center">

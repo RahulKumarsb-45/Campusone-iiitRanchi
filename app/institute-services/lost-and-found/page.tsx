@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { PackageSearch, Search, Plus, MapPin, Calendar, Phone, ArrowLeft, CheckCircle2, Trash2, Pencil } from "lucide-react"
+import { PackageSearch, Search, Plus, MapPin, Calendar, Phone, ArrowLeft, CheckCircle2, Trash2, Pencil, AlertCircle, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +45,7 @@ export default function LostAndFoundPage() {
   const { user } = useAuth()
   const [items, setItems] = useState<LostFoundItemType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [filterType, setFilterType] = useState<"all" | "lost" | "found">("all")
   const [showAddModal, setShowAddModal] = useState(false)
@@ -73,8 +74,14 @@ export default function LostAndFoundPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const res = await fetchLostFoundItems()
-    setItems(res)
+    if (res.error) {
+      setLoadError(res.error)
+      setItems([])
+    } else {
+      setItems(res)
+    }
     setLoading(false)
   }, [])
 
@@ -82,7 +89,12 @@ export default function LostAndFoundPage() {
     let isMounted = true
     fetchLostFoundItems().then((res) => {
       if (isMounted) {
-        setItems(res)
+        if (res.error) {
+          setLoadError(res.error)
+          setItems([])
+        } else {
+          setItems(res)
+        }
         setLoading(false)
       }
     })
@@ -285,6 +297,16 @@ export default function LostAndFoundPage() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-60 rounded-xl border border-border bg-muted/40 animate-pulse" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center text-destructive">
+          <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+          <h3 className="font-semibold text-base">Unable to load lost & found items</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={loadData} className="mt-4 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-dashed border-border p-8 text-center">

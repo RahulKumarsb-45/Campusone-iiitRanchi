@@ -123,7 +123,7 @@ export function EventCard({ event, className }: EventCardProps) {
         <Card className={cn("h-full overflow-hidden border bg-gradient-to-br flex flex-col justify-between", colorScheme.border, colorScheme.bg)}>
           <div>
             <div className="relative h-48 overflow-hidden bg-neutral-900 group">
-              <Link href={`/events/${event.id}`} className="block h-full w-full cursor-pointer">
+              <Link href={`/events/${event.id}`} className="relative block h-full w-full cursor-pointer">
                 <Image
                   src={imgSrc}
                   alt={event.title}

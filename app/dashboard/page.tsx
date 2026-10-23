@@ -56,18 +56,24 @@ export default function DashboardPage() {
   const [registrations, setRegistrations] = useState<RegistrationType[]>([])
   const [registrationError, setRegistrationError] = useState<string | null>(null)
   const [createdEvents, setCreatedEvents] = useState<EventType[]>([])
+  const [eventsError, setEventsError] = useState<string | null>(null)
   const [loadingData, setLoadingData] = useState(true)
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null)
   const [demoMode, setDemoMode] = useState(false)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
   const [now] = useState(() => Date.now())
 
-  const loadDashboardData = useCallback(async (userId: string) => {
+  const loadDashboardData = useCallback(async (userId: string, userRole?: string) => {
     setLoadingData(true)
     try {
+      const isStaff = isStaffOrAdmin(userRole)
+      const eventsQuery = isStaff
+        ? supabase.from("events").select("*").order("date", { ascending: true })
+        : supabase.from("events").select("*").eq("user_id", userId).order("date", { ascending: true })
+
       const [regs, createdRes, analyticsRes] = await Promise.all([
         fetchUserRegistrations(userId),
-        supabase.from("events").select("*").eq("user_id", userId),
+        eventsQuery,
         fetchRealProductAnalytics(false),
       ])
 
@@ -76,11 +82,19 @@ export default function DashboardPage() {
       } else {
         setRegistrationError(null)
       }
+
+      if (createdRes.error) {
+        setEventsError(createdRes.error.message)
+      } else {
+        setEventsError(null)
+      }
+
       setRegistrations(regs || [])
       setCreatedEvents((createdRes.data as EventType[]) || [])
       setAnalytics(analyticsRes)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Dashboard data load error:", err)
+      setEventsError(err?.message || "Failed to load events")
     } finally {
       setLoadingData(false)
     }
@@ -103,9 +117,14 @@ export default function DashboardPage() {
       if (!user) {
         router.push("/auth/login?next=/dashboard")
       } else {
+        const isStaff = isStaffOrAdmin(user.role)
+        const eventsQuery = isStaff
+          ? supabase.from("events").select("*").order("date", { ascending: true })
+          : supabase.from("events").select("*").eq("user_id", user.id).order("date", { ascending: true })
+
         Promise.all([
           fetchUserRegistrations(user.id),
-          supabase.from("events").select("*").eq("user_id", user.id),
+          eventsQuery,
           fetchRealProductAnalytics(false),
         ])
           .then(([regs, createdRes, analyticsRes]) => {
@@ -115,14 +134,20 @@ export default function DashboardPage() {
             } else {
               setRegistrationError(null)
             }
+            if (createdRes.error) {
+              setEventsError(createdRes.error.message)
+            } else {
+              setEventsError(null)
+            }
             setRegistrations(regs || [])
             setCreatedEvents((createdRes.data as EventType[]) || [])
             setAnalytics(analyticsRes)
             setLoadingData(false)
           })
-          .catch((err) => {
+          .catch((err: any) => {
             if (!isMounted) return
             console.error("Dashboard data load error:", err)
+            setEventsError(err?.message || "Failed to load events")
             setLoadingData(false)
           })
       }
@@ -147,7 +172,7 @@ export default function DashboardPage() {
           title: "Registration Cancelled",
           description: "Your registration has been successfully cancelled.",
         })
-        loadDashboardData(user.id)
+        loadDashboardData(user.id, user.role)
       }
     } catch (err: any) {
       toast({
@@ -167,7 +192,7 @@ export default function DashboardPage() {
           title: "Event deleted",
           description: "Event has been removed from CampusOne.",
         })
-        loadDashboardData(user.id)
+        loadDashboardData(user.id, user.role)
       } else {
         toast({
           title: "Delete failed",
@@ -263,11 +288,15 @@ export default function DashboardPage() {
 
                 <div className="rounded-xl border border-border bg-neutral-50/60 dark:bg-neutral-900/40 p-4">
                   <div className="flex items-center justify-between text-muted-foreground mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider">Created</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      {isStaffOrAdmin(user.role) ? "Managed" : "Created"}
+                    </span>
                     <Users className="h-4 w-4 text-foreground" />
                   </div>
                   <p className="text-3xl font-black text-foreground">{totalCreated}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Events hosted by you</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isStaffOrAdmin(user.role) ? "Live campus events" : "Events hosted by you"}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -283,7 +312,7 @@ export default function DashboardPage() {
               My Registrations ({totalRegistered})
             </TabsTrigger>
             <TabsTrigger value="created" className="text-xs font-semibold">
-              Events Created ({totalCreated})
+              {isStaffOrAdmin(user.role) ? `Campus Events (${totalCreated})` : `Events Created (${totalCreated})`}
             </TabsTrigger>
             <TabsTrigger value="activity" className="text-xs font-semibold">
               Campus Activity
@@ -306,7 +335,7 @@ export default function DashboardPage() {
               mode="registrations"
               onCancelRegistration={handleCancelRegistration}
               errorMessage={registrationError}
-              onRetry={() => user && loadDashboardData(user.id)}
+              onRetry={() => user && loadDashboardData(user.id, user.role)}
             />
           </TabsContent>
 
@@ -316,6 +345,8 @@ export default function DashboardPage() {
               createdEvents={createdEvents}
               mode="created"
               onDeleteEvent={handleDeleteCreatedEvent}
+              errorMessage={eventsError}
+              onRetry={() => user && loadDashboardData(user.id, user.role)}
             />
           </TabsContent>
 

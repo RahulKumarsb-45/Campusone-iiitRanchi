@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Image as ImageIcon, Plus, ArrowLeft, Calendar, Tag, ExternalLink } from "lucide-react"
+import { Image as ImageIcon, Plus, ArrowLeft, Calendar, Tag, ExternalLink, AlertCircle, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +28,7 @@ export default function GalleryPage() {
   const { user } = useAuth()
   const [images, setImages] = useState<GalleryImageType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState("All")
   const [showAddModal, setShowAddModal] = useState(false)
   const [previewImage, setPreviewImage] = useState<GalleryImageType | null>(null)
@@ -43,8 +44,14 @@ export default function GalleryPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const res = await fetchGalleryImages()
-    setImages(res)
+    if (res.error) {
+      setLoadError(res.error)
+      setImages([])
+    } else {
+      setImages(res)
+    }
     setLoading(false)
   }, [])
 
@@ -52,7 +59,12 @@ export default function GalleryPage() {
     let isMounted = true
     fetchGalleryImages().then((res) => {
       if (isMounted) {
-        setImages(res)
+        if (res.error) {
+          setLoadError(res.error)
+          setImages([])
+        } else {
+          setImages(res)
+        }
         setLoading(false)
       }
     })
@@ -142,6 +154,16 @@ export default function GalleryPage() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-64 rounded-xl border border-border bg-muted/40 animate-pulse" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center text-destructive">
+          <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+          <h3 className="font-semibold text-base">Unable to load gallery images</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={loadData} className="mt-4 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-dashed border-border p-8 text-center">

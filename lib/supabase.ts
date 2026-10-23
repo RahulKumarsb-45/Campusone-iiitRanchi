@@ -386,7 +386,7 @@ export async function fetchEvents(options?: {
   orderBy?: string;
   ascending?: boolean;
   upcoming?: boolean;
-}): Promise<EventType[]> {
+}): Promise<QueryResult<EventType>> {
   try {
     let query = supabase.from("events").select("*");
 
@@ -422,7 +422,7 @@ export async function fetchEvents(options?: {
     const { data, error } = await query;
 
     if (error) {
-      // Graceful fallback to verified sample events only when query fails
+      console.warn("fetchEvents DB error:", error.message);
       let filtered = [...fallbackEvents];
       if (options?.category && options.category !== "all") {
         filtered = filtered.filter(
@@ -436,22 +436,28 @@ export async function fetchEvents(options?: {
       if (options?.limit) {
         filtered = filtered.slice(0, options.limit);
       }
-      return filtered.map((e) => ({
+      const res: QueryResult<EventType> = filtered.map((e) => ({
         ...e,
         image: getEventImage(e),
       }));
+      res.error = error.message;
+      return res;
     }
 
-    return (data || []).map((e) => ({
+    const res: QueryResult<EventType> = (data || []).map((e) => ({
       ...e,
       image: getEventImage(e),
     }));
-  } catch (err) {
+    res.error = null;
+    return res;
+  } catch (err: any) {
     console.error("fetchEvents error:", err);
-    return fallbackEvents.map((e) => ({
+    const res: QueryResult<EventType> = fallbackEvents.map((e) => ({
       ...e,
       image: getEventImage(e),
     }));
+    res.error = err?.message || "Failed to fetch events";
+    return res;
   }
 }
 
@@ -678,9 +684,11 @@ export async function cancelRegistration(eventId: number, userId: string) {
   }
 }
 
-export type RegistrationQueryResult = RegistrationType[] & {
+export type QueryResult<T> = T[] & {
   error?: string | null;
 };
+
+export type RegistrationQueryResult = QueryResult<RegistrationType>;
 
 export async function fetchUserRegistrations(
   userId?: string,
@@ -884,7 +892,7 @@ const fallbackClubs: ClubType[] = [
   },
 ];
 
-export async function fetchClubs(category?: string): Promise<ClubType[]> {
+export async function fetchClubs(category?: string): Promise<QueryResult<ClubType>> {
   try {
     let query = supabase.from("clubs").select("*").order("name");
     if (category && category !== "All") {
@@ -892,19 +900,25 @@ export async function fetchClubs(category?: string): Promise<ClubType[]> {
     }
     const { data, error } = await query;
     if (error) {
-      if (category && category !== "All") {
-        return fallbackClubs
-          .filter((c) => c.category.toLowerCase() === category.toLowerCase())
-          .map((c) => ({ ...c, image: getClubImage(c) }));
-      }
-      return fallbackClubs.map((c) => ({ ...c, image: getClubImage(c) }));
+      console.warn("fetchClubs DB error:", error.message);
+      const fallbackList: QueryResult<ClubType> = (category && category !== "All"
+        ? fallbackClubs.filter((c) => c.category.toLowerCase() === category.toLowerCase())
+        : fallbackClubs
+      ).map((c) => ({ ...c, image: getClubImage(c) }));
+      fallbackList.error = error.message;
+      return fallbackList;
     }
-    return (data || []).map((c) => ({
+    const result: QueryResult<ClubType> = (data || []).map((c) => ({
       ...c,
       image: getClubImage(c),
     }));
-  } catch {
-    return fallbackClubs.map((c) => ({ ...c, image: getClubImage(c) }));
+    result.error = null;
+    return result;
+  } catch (err: any) {
+    console.error("fetchClubs error:", err);
+    const fallbackList: QueryResult<ClubType> = fallbackClubs.map((c) => ({ ...c, image: getClubImage(c) }));
+    fallbackList.error = err?.message || "Failed to fetch clubs";
+    return fallbackList;
   }
 }
 
@@ -1042,21 +1056,26 @@ const fallbackInternships: InternshipType[] = [
   },
 ];
 
-export async function fetchInternships(): Promise<InternshipType[]> {
+export async function fetchInternships(): Promise<QueryResult<InternshipType>> {
   try {
     const { data, error } = await supabase
       .from("internships")
       .select("*")
       .order("deadline", { ascending: true });
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchInternships DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchInternships DB error:", error.message);
+      const empty: QueryResult<InternshipType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as InternshipType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<InternshipType> = (data as InternshipType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchInternships error:", err);
+    const empty: QueryResult<InternshipType> = [];
+    empty.error = err?.message || "Failed to fetch internships";
+    return empty;
   }
 }
 
@@ -1146,21 +1165,26 @@ const fallbackPlacements: PlacementType[] = [
   },
 ];
 
-export async function fetchPlacements(): Promise<PlacementType[]> {
+export async function fetchPlacements(): Promise<QueryResult<PlacementType>> {
   try {
     const { data, error } = await supabase
       .from("placements")
       .select("*")
       .order("drive_date", { ascending: true });
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchPlacements DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchPlacements DB error:", error.message);
+      const empty: QueryResult<PlacementType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as PlacementType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<PlacementType> = (data as PlacementType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchPlacements error:", err);
+    const empty: QueryResult<PlacementType> = [];
+    empty.error = err?.message || "Failed to fetch placements";
+    return empty;
   }
 }
 
@@ -1260,7 +1284,7 @@ const fallbackNotices: NoticeType[] = [
 
 export async function fetchNotices(
   noticeType?: "college" | "hostel",
-): Promise<NoticeType[]> {
+): Promise<QueryResult<NoticeType>> {
   try {
     let query = supabase
       .from("notices")
@@ -1271,14 +1295,19 @@ export async function fetchNotices(
     }
     const { data, error } = await query;
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchNotices DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchNotices DB error:", error.message);
+      const empty: QueryResult<NoticeType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as NoticeType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<NoticeType> = (data as NoticeType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchNotices error:", err);
+    const empty: QueryResult<NoticeType> = [];
+    empty.error = err?.message || "Failed to fetch notices";
+    return empty;
   }
 }
 
@@ -1350,21 +1379,26 @@ const fallbackAnnouncements: AnnouncementType[] = [
   },
 ];
 
-export async function fetchAnnouncements(): Promise<AnnouncementType[]> {
+export async function fetchAnnouncements(): Promise<QueryResult<AnnouncementType>> {
   try {
     const { data, error } = await supabase
       .from("announcements")
       .select("*")
       .order("created_at", { ascending: false });
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchAnnouncements DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchAnnouncements DB error:", error.message);
+      const empty: QueryResult<AnnouncementType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as AnnouncementType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<AnnouncementType> = (data as AnnouncementType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchAnnouncements error:", err);
+    const empty: QueryResult<AnnouncementType> = [];
+    empty.error = err?.message || "Failed to fetch announcements";
+    return empty;
   }
 }
 
@@ -1455,21 +1489,26 @@ const fallbackLostFound: LostFoundItemType[] = [
   },
 ];
 
-export async function fetchLostFoundItems(): Promise<LostFoundItemType[]> {
+export async function fetchLostFoundItems(): Promise<QueryResult<LostFoundItemType>> {
   try {
     const { data, error } = await supabase
       .from("lost_found_items")
       .select("*")
       .order("date", { ascending: false });
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchLostFoundItems DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchLostFoundItems DB error:", error.message);
+      const empty: QueryResult<LostFoundItemType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as LostFoundItemType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<LostFoundItemType> = (data as LostFoundItemType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchLostFoundItems error:", err);
+    const empty: QueryResult<LostFoundItemType> = [];
+    empty.error = err?.message || "Failed to fetch lost and found items";
+    return empty;
   }
 }
 
@@ -1586,21 +1625,26 @@ const fallbackMarketplace: MarketplaceItemType[] = [
   },
 ];
 
-export async function fetchMarketplaceItems(): Promise<MarketplaceItemType[]> {
+export async function fetchMarketplaceItems(): Promise<QueryResult<MarketplaceItemType>> {
   try {
     const { data, error } = await supabase
       .from("marketplace_items")
       .select("*")
       .order("created_at", { ascending: false });
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchMarketplaceItems DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchMarketplaceItems DB error:", error.message);
+      const empty: QueryResult<MarketplaceItemType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as MarketplaceItemType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<MarketplaceItemType> = (data as MarketplaceItemType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchMarketplaceItems error:", err);
+    const empty: QueryResult<MarketplaceItemType> = [];
+    empty.error = err?.message || "Failed to fetch marketplace items";
+    return empty;
   }
 }
 
@@ -1719,21 +1763,26 @@ const fallbackGallery: GalleryImageType[] = [
   },
 ];
 
-export async function fetchGalleryImages(): Promise<GalleryImageType[]> {
+export async function fetchGalleryImages(): Promise<QueryResult<GalleryImageType>> {
   try {
     const { data, error } = await supabase
       .from("gallery_images")
       .select("*")
       .order("created_at", { ascending: false });
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchGalleryImages DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchGalleryImages DB error:", error.message);
+      const empty: QueryResult<GalleryImageType> = [];
+      empty.error = error.message;
+      return empty;
     }
-    return (data as GalleryImageType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<GalleryImageType> = (data as GalleryImageType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchGalleryImages error:", err);
+    const empty: QueryResult<GalleryImageType> = [];
+    empty.error = err?.message || "Failed to fetch gallery images";
+    return empty;
   }
 }
 
@@ -1795,7 +1844,7 @@ export async function fetchHostelComplaints(options?: {
   userId?: string;
   isStaff?: boolean;
   status?: string;
-}): Promise<HostelComplaintType[]> {
+}): Promise<QueryResult<HostelComplaintType>> {
   try {
     let query = supabase
       .from("hostel_complaints")
@@ -1813,15 +1862,20 @@ export async function fetchHostelComplaints(options?: {
 
     const { data, error } = await query;
     if (error) {
-      if (error.code !== "PGRST205") {
-        console.warn("fetchHostelComplaints DB error:", error.message);
-      }
-      return [];
+      console.warn("fetchHostelComplaints DB error:", error.message);
+      const empty: QueryResult<HostelComplaintType> = [];
+      empty.error = error.message;
+      return empty;
     }
 
-    return (data as HostelComplaintType[]) || [];
-  } catch {
-    return [];
+    const res: QueryResult<HostelComplaintType> = (data as HostelComplaintType[]) || [];
+    res.error = null;
+    return res;
+  } catch (err: any) {
+    console.error("fetchHostelComplaints error:", err);
+    const empty: QueryResult<HostelComplaintType> = [];
+    empty.error = err?.message || "Failed to fetch hostel complaints";
+    return empty;
   }
 }
 

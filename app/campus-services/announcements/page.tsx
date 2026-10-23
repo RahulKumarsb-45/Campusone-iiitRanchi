@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Megaphone, Search, Plus, ArrowLeft, Calendar, AlertCircle, Pencil, Trash2 } from "lucide-react"
+import { Megaphone, Search, Plus, ArrowLeft, Calendar, AlertCircle, Pencil, Trash2, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,6 +44,7 @@ export default function AnnouncementsPage() {
   const { user } = useAuth()
   const [announcements, setAnnouncements] = useState<AnnouncementType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -66,8 +67,14 @@ export default function AnnouncementsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const res = await fetchAnnouncements()
-    setAnnouncements(res)
+    if (res.error) {
+      setLoadError(res.error)
+      setAnnouncements([])
+    } else {
+      setAnnouncements(res)
+    }
     setLoading(false)
   }, [])
 
@@ -75,7 +82,12 @@ export default function AnnouncementsPage() {
     let isMounted = true
     fetchAnnouncements().then((res) => {
       if (isMounted) {
-        setAnnouncements(res)
+        if (res.error) {
+          setLoadError(res.error)
+          setAnnouncements([])
+        } else {
+          setAnnouncements(res)
+        }
         setLoading(false)
       }
     })
@@ -238,6 +250,16 @@ export default function AnnouncementsPage() {
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="h-32 rounded-xl border border-border bg-muted/40 animate-pulse" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center text-destructive">
+          <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+          <h3 className="font-semibold text-base">Unable to load announcements</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={loadData} className="mt-4 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex min-h-[250px] flex-col items-center justify-center rounded-2xl border border-dashed border-border p-8 text-center">
