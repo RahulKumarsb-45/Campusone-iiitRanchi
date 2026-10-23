@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { GraduationCap, Search, Plus, MapPin, Calendar, ExternalLink, ArrowLeft, Building2 } from "lucide-react"
+import { GraduationCap, Search, Plus, MapPin, Calendar, ExternalLink, ArrowLeft, Building2, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,11 +16,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchPlacements, createPlacement, isStaffOrAdmin, type PlacementType } from "@/lib/supabase"
+import { fetchPlacements, createPlacement, updatePlacement, deletePlacement, isStaffOrAdmin, type PlacementType } from "@/lib/supabase"
 
 export default function PlacementsPage() {
   const { user } = useAuth()
@@ -28,6 +38,8 @@ export default function PlacementsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<PlacementType | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [form, setForm] = useState({
@@ -37,6 +49,17 @@ export default function PlacementsPage() {
     eligibility: "",
     drive_date: "",
     location: "IIIT Ranchi Campus / Virtual",
+    description: "",
+    apply_link: "",
+  })
+
+  const [editForm, setEditForm] = useState({
+    company: "",
+    role: "",
+    ctc: "",
+    eligibility: "",
+    drive_date: "",
+    location: "",
     description: "",
     apply_link: "",
   })
@@ -90,6 +113,79 @@ export default function PlacementsPage() {
       } else {
         toast({ title: "Placement drive added", description: "Schedule is now available to students." })
         setShowAddModal(false)
+        setForm({
+          company: "",
+          role: "",
+          ctc: "",
+          eligibility: "",
+          drive_date: "",
+          location: "IIIT Ranchi Campus / Virtual",
+          description: "",
+          apply_link: "",
+        })
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const openEdit = (item: PlacementType) => {
+    setEditingItem(item)
+    setEditForm({
+      company: item.company,
+      role: item.role,
+      ctc: item.ctc,
+      eligibility: item.eligibility,
+      drive_date: item.drive_date ? item.drive_date.split("T")[0] : "",
+      location: item.location,
+      description: item.description,
+      apply_link: item.apply_link || "",
+    })
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem) return
+    setIsSubmitting(true)
+    try {
+      const res = await updatePlacement(editingItem.id, {
+        company: editForm.company.trim(),
+        role: editForm.role.trim(),
+        ctc: editForm.ctc.trim(),
+        eligibility: editForm.eligibility.trim(),
+        drive_date: new Date(editForm.drive_date).toISOString(),
+        location: editForm.location.trim(),
+        description: editForm.description.trim(),
+        apply_link: editForm.apply_link.trim() || undefined,
+      })
+
+      if (res.error) {
+        toast({ title: "Update failed", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Drive updated", description: "Changes saved successfully." })
+        setEditingItem(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deletingId) return
+    setIsSubmitting(true)
+    try {
+      const res = await deletePlacement(deletingId)
+      if (res.error) {
+        toast({ title: "Deletion failed", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Drive deleted", description: "Placement drive removed successfully." })
+        setDeletingId(null)
         loadData()
       }
     } catch (err: any) {
@@ -184,7 +280,7 @@ export default function PlacementsPage() {
                 </div>
               </CardContent>
 
-              <CardFooter className="pt-3 border-t border-border">
+              <CardFooter className="flex-col gap-2 pt-3 border-t border-border">
                 {item.apply_link ? (
                   <Button asChild size="sm" className="w-full bg-black text-white hover:bg-neutral-800 text-xs gap-1.5">
                     <a href={item.apply_link} target="_blank" rel="noopener noreferrer">
@@ -195,6 +291,29 @@ export default function PlacementsPage() {
                   <Button size="sm" variant="outline" className="w-full text-xs" disabled>
                     Register via TPO Cell
                   </Button>
+                )}
+
+                {isStaffOrAdmin(user?.role) && (
+                  <div className="flex items-center gap-2 w-full pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEdit(item)}
+                      className="flex-1 text-xs gap-1 h-8"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeletingId(item.id)}
+                      className="flex-1 text-xs gap-1 h-8"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete
+                    </Button>
+                  </div>
                 )}
               </CardFooter>
             </Card>
@@ -313,6 +432,133 @@ export default function PlacementsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Placement Drive</DialogTitle>
+            <DialogDescription>Update corporate drive details and registration requirements</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-comp">Company Name *</Label>
+                <Input
+                  id="edit-comp"
+                  value={editForm.company}
+                  onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-role">Designation / Role *</Label>
+                <Input
+                  id="edit-role"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-ctc">Package (CTC) *</Label>
+                <Input
+                  id="edit-ctc"
+                  value={editForm.ctc}
+                  onChange={(e) => setEditForm({ ...editForm, ctc: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-ddate">Drive Date *</Label>
+                <Input
+                  id="edit-ddate"
+                  type="date"
+                  value={editForm.drive_date}
+                  onChange={(e) => setEditForm({ ...editForm, drive_date: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-elig">Eligibility Criteria *</Label>
+              <Input
+                id="edit-elig"
+                value={editForm.eligibility}
+                onChange={(e) => setEditForm({ ...editForm, eligibility: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-loc">Venue / Drive Mode *</Label>
+                <Input
+                  id="edit-loc"
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-link">Registration / TPO Link</Label>
+                <Input
+                  id="edit-link"
+                  value={editForm.apply_link}
+                  onChange={(e) => setEditForm({ ...editForm, apply_link: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-desc">Drive Details & Procedure *</Label>
+              <Textarea
+                id="edit-desc"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                rows={3}
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingItem(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting} className="bg-black text-white hover:bg-neutral-800">
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Placement Drive?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This corporate recruitment drive will be permanently removed from the portal.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? "Deleting..." : "Delete Drive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

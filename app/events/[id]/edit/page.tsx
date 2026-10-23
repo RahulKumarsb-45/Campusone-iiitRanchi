@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchEventById, updateEvent, type EventType } from "@/lib/supabase"
+import { fetchEventById, updateEvent, isStaffOrAdmin, type EventType } from "@/lib/supabase"
 
 export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -81,7 +81,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
       // Check authorization: must be creator or admin/faculty
       const isCreator = ev.user_id === user.id
-      const isPrivileged = user.role === "admin" || user.role === "faculty"
+      const isPrivileged = isStaffOrAdmin(user.role)
 
       if (!isCreator && !isPrivileged) {
         toast({

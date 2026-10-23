@@ -102,57 +102,71 @@ export function calculateHostelResolutionMetrics(
  * Fetches real production analytics from Supabase
  * If no records exist yet, returns real zeros unless fallback demo data is requested
  */
+/**
+ * Fetches real production analytics from Supabase
+ * When useDemoFallback is true, returns clearly labeled demo simulation data.
+ * When useDemoFallback is false, strictly derives all calculations from live database records.
+ */
 export async function fetchRealProductAnalytics(useDemoFallback = false): Promise<AnalyticsSummary> {
+  // If demo mode is explicitly requested, return simulated cohort data immediately
+  if (useDemoFallback) {
+    return {
+      totalUsers: 142,
+      activeRegistrations: 89,
+      totalEventsPublished: 12,
+      totalComplaintsLogged: 24,
+      categoryDistribution: [
+        { name: "Seminars", value: 38 },
+        { name: "Workshops", value: 45 },
+        { name: "Sports", value: 29 },
+        { name: "Cultural", value: 20 },
+      ],
+      monthlyTrends: [
+        { name: "May", value: 14 },
+        { name: "Jun", value: 22 },
+        { name: "Jul", value: 18 },
+        { name: "Aug", value: 35 },
+        { name: "Sep", value: 42 },
+        { name: "Oct", value: 28 },
+      ],
+      complaintStats: {
+        total: 24,
+        resolved: 19,
+        open: 3,
+        inProgress: 2,
+        rejected: 0,
+        resolutionRate: 79.2,
+      },
+      conversionRates: {
+        overallCapacityFillRate: 64.5,
+        averageRegistrationsPerEvent: 7.4,
+      },
+      isDemoMode: true,
+    }
+  }
+
   try {
     const [eventsRes, regsRes, usersRes, complaintsRes] = await Promise.all([
       supabase.from("events").select("*"),
-      supabase.from("registrations").select("id, registration_date, event_id"),
+      supabase.from("registrations").select("id, registration_date, event_id, user_id"),
       supabase.from("users").select("id, created_at"),
       supabase.from("hostel_complaints").select("*"),
     ])
 
     const events = (eventsRes.data as EventType[]) || []
     const registrations = regsRes.data || []
-    const usersCount = usersRes.data ? usersRes.data.length : 0
     const complaints = (complaintsRes.data as HostelComplaintType[]) || []
 
-    const hasRealData = events.length > 0 || registrations.length > 0 || complaints.length > 0
-
-    if (!hasRealData && useDemoFallback) {
-      // Clearly labeled demo metrics for exhibition/portfolio review when zero records exist in cloud Supabase
-      return {
-        totalUsers: 142,
-        activeRegistrations: 89,
-        totalEventsPublished: 12,
-        totalComplaintsLogged: 24,
-        categoryDistribution: [
-          { name: "Seminars", value: 38 },
-          { name: "Workshops", value: 45 },
-          { name: "Sports", value: 29 },
-          { name: "Cultural", value: 20 },
-        ],
-        monthlyTrends: [
-          { name: "May", value: 14 },
-          { name: "Jun", value: 22 },
-          { name: "Jul", value: 18 },
-          { name: "Aug", value: 35 },
-          { name: "Sep", value: 42 },
-          { name: "Oct", value: 28 },
-        ],
-        complaintStats: {
-          total: 24,
-          resolved: 19,
-          open: 3,
-          inProgress: 2,
-          rejected: 0,
-          resolutionRate: 79.2,
-        },
-        conversionRates: {
-          overallCapacityFillRate: 64.5,
-          averageRegistrationsPerEvent: 7.4,
-        },
-        isDemoMode: true,
-      }
+    // Calculate active user count: prefer public.users rows, or derive unique users participating
+    let usersCount = 0
+    if (usersRes.data && usersRes.data.length > 0) {
+      usersCount = usersRes.data.length
+    } else {
+      const distinctUsers = new Set<string>()
+      registrations.forEach((r: any) => { if (r.user_id) distinctUsers.add(r.user_id) })
+      events.forEach((e: any) => { if (e.user_id) distinctUsers.add(e.user_id) })
+      complaints.forEach((c: any) => { if (c.user_id) distinctUsers.add(c.user_id) })
+      usersCount = Math.max(1, distinctUsers.size)
     }
 
     // Real production metrics calculated from database rows

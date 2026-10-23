@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Bell, Search, Plus, ArrowLeft, Calendar, Building, AlertTriangle } from "lucide-react"
+import { Bell, Search, Plus, ArrowLeft, Calendar, Building, AlertTriangle, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -16,12 +16,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchNotices, createNotice, isStaffOrAdmin, type NoticeType } from "@/lib/supabase"
+import {
+  fetchNotices,
+  createNotice,
+  updateNotice,
+  deleteNotice,
+  isStaffOrAdmin,
+  type NoticeType,
+} from "@/lib/supabase"
 
 export default function CollegeNoticesPage() {
   const { user } = useAuth()
@@ -32,12 +49,24 @@ export default function CollegeNoticesPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [editingNotice, setEditingNotice] = useState<NoticeType | null>(null)
+  const [deletingNoticeId, setDeletingNoticeId] = useState<number | null>(null)
+
   const [form, setForm] = useState({
     title: "",
     content: "",
     department: "Academic Affairs",
     priority: "Normal" as NoticeType["priority"],
     target_audience: "All Students",
+    file_url: "",
+  })
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    content: "",
+    department: "",
+    priority: "Normal" as NoticeType["priority"],
+    target_audience: "",
     file_url: "",
   })
 
@@ -96,12 +125,78 @@ export default function CollegeNoticesPage() {
       } else {
         toast({ title: "Notice published", description: "Circular is now live on CampusOne." })
         setShowAddModal(false)
+        setForm({
+          title: "",
+          content: "",
+          department: "Academic Affairs",
+          priority: "Normal",
+          target_audience: "All Students",
+          file_url: "",
+        })
         loadData()
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const openEditModal = (notice: NoticeType) => {
+    setEditingNotice(notice)
+    setEditForm({
+      title: notice.title,
+      content: notice.content,
+      department: notice.department,
+      priority: notice.priority,
+      target_audience: notice.target_audience,
+      file_url: notice.file_url || "",
+    })
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingNotice || !user || !isStaffOrAdmin(user.role)) return
+
+    setIsSubmitting(true)
+    try {
+      const res = await updateNotice(editingNotice.id, {
+        title: editForm.title.trim(),
+        content: editForm.content.trim(),
+        department: editForm.department.trim(),
+        priority: editForm.priority,
+        target_audience: editForm.target_audience.trim(),
+        file_url: editForm.file_url.trim() || undefined,
+      })
+
+      if (res.error) {
+        toast({ title: "Failed to update notice", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Notice updated", description: "Changes have been saved successfully." })
+        setEditingNotice(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const confirmDeleteNotice = async () => {
+    if (!deletingNoticeId || !user || !isStaffOrAdmin(user.role)) return
+
+    try {
+      const res = await deleteNotice(deletingNoticeId)
+      if (res.error) {
+        toast({ title: "Failed to delete notice", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Notice deleted", description: "Circular has been permanently removed." })
+        setDeletingNoticeId(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
     }
   }
 
@@ -200,6 +295,28 @@ export default function CollegeNoticesPage() {
               <CardContent className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-line pt-2">
                 {notice.content}
               </CardContent>
+
+              {user && isStaffOrAdmin(user.role) && (
+                <CardFooter className="pt-2 border-t border-border flex items-center justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1"
+                    onClick={() => openEditModal(notice)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => setDeletingNoticeId(notice.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           ))}
         </div>
@@ -282,6 +399,101 @@ export default function CollegeNoticesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Notice Modal */}
+      <Dialog open={!!editingNotice} onOpenChange={(open) => { if (!open) setEditingNotice(null) }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit College Notice</DialogTitle>
+            <DialogDescription>Modify official circular details and target recipients</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <Label htmlFor="edit-title">Notice Title *</Label>
+              <Input
+                id="edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-dept">Issuing Department *</Label>
+                <Input
+                  id="edit-dept"
+                  value={editForm.department}
+                  onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-pri">Priority Level *</Label>
+                <Select value={editForm.priority} onValueChange={(val: any) => setEditForm({ ...editForm, priority: val })}>
+                  <SelectTrigger id="edit-pri"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Normal">Normal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-aud">Target Audience</Label>
+              <Input
+                id="edit-aud"
+                value={editForm.target_audience}
+                onChange={(e) => setEditForm({ ...editForm, target_audience: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-content">Notice Content / Instructions *</Label>
+              <Textarea
+                id="edit-content"
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                rows={4}
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingNotice(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting} className="bg-black text-white hover:bg-neutral-800">
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!deletingNoticeId} onOpenChange={(open) => { if (!open) setDeletingNoticeId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Notice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this official circular? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteNotice}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

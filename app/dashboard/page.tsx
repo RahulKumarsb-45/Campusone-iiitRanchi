@@ -17,6 +17,14 @@ import {
   Info,
   Wrench,
   Percent,
+  Shield,
+  FileText,
+  Megaphone,
+  Briefcase,
+  GraduationCap,
+  PackageSearch,
+  ShoppingBag,
+  ExternalLink,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -34,6 +42,7 @@ import {
   fetchUserRegistrations,
   cancelRegistration,
   deleteEvent,
+  isStaffOrAdmin,
   supabase,
   type RegistrationType,
   type EventType,
@@ -45,6 +54,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
 
   const [registrations, setRegistrations] = useState<RegistrationType[]>([])
+  const [registrationError, setRegistrationError] = useState<string | null>(null)
   const [createdEvents, setCreatedEvents] = useState<EventType[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null)
@@ -60,6 +70,11 @@ export default function DashboardPage() {
         fetchRealProductAnalytics(false),
       ])
 
+      if (regs?.error) {
+        setRegistrationError(regs.error)
+      } else {
+        setRegistrationError(null)
+      }
       setRegistrations(regs || [])
       setCreatedEvents((createdRes.data as EventType[]) || [])
       setAnalytics(analyticsRes)
@@ -252,6 +267,12 @@ export default function DashboardPage() {
               <BarChart3 className="h-3.5 w-3.5" />
               Platform Analytics & PM Metrics
             </TabsTrigger>
+            {isStaffOrAdmin(user?.role) && (
+              <TabsTrigger value="admin" className="text-xs font-semibold flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                <Shield className="h-3.5 w-3.5" />
+                Admin Management Hub
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="registrations">
@@ -259,6 +280,8 @@ export default function DashboardPage() {
               registrations={registrations}
               mode="registrations"
               onCancelRegistration={handleCancelRegistration}
+              errorMessage={registrationError}
+              onRetry={() => user && loadDashboardData(user.id)}
             />
           </TabsContent>
 
@@ -470,6 +493,224 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Admin Management Hub Tab */}
+          {isStaffOrAdmin(user?.role) && (
+            <TabsContent value="admin" className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-blue-600" />
+                    <h3 className="text-base font-bold text-foreground">University Admin Command Center</h3>
+                    <Badge className="bg-blue-600 text-white text-[10px]">Staff / Admin Access</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Manage records, edit content, moderate listings, and resolve tickets across all 9 CampusOne modules.
+                  </p>
+                </div>
+                <Button asChild size="sm" className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black shrink-0">
+                  <Link href="/events/create">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Create New Event
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Module 1: Events */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <CardTitle className="text-sm font-bold">Campus Events</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Active</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Manage, edit, publish and delete campus workshops, seminars & hackathons
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2 flex gap-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs flex-1">
+                      <Link href="/events">View Directory</Link>
+                    </Button>
+                    <Button asChild size="sm" className="text-xs flex-1 bg-black text-white hover:bg-neutral-800">
+                      <Link href="/events/create">New Event</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 2: Clubs */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-emerald-600" />
+                        <CardTitle className="text-sm font-bold">Student Clubs</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Active</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Update club leads, verified cover photos, meeting schedules and metadata
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/clubs">Manage Clubs Portal</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 3: Official Notices */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-amber-600" />
+                        <CardTitle className="text-sm font-bold">Official Notices</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Admin CRUD</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Publish administrative circulars with High / Urgent priority banners
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/campus-services/notices">Manage Notices</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 4: Announcements */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Megaphone className="h-4 w-4 text-purple-600" />
+                        <CardTitle className="text-sm font-bold">Announcements</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Admin CRUD</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Post department announcements, exam updates, and guest lectures
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/campus-services/announcements">Manage Announcements</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 5: Internships */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-cyan-600" />
+                        <CardTitle className="text-sm font-bold">Internship Listings</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">TPO Cell</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Post stipend-bearing industry internships and research opportunities
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/campus-services/internships">Manage Internships</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 6: Placements */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 text-indigo-600" />
+                        <CardTitle className="text-sm font-bold">Placement Drives</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">TPO Cell</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Add corporate recruitment drives, CTC packages, criteria, and TPO links
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/campus-services/placements">Manage Placement Drives</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 7: Lost & Found */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PackageSearch className="h-4 w-4 text-rose-600" />
+                        <CardTitle className="text-sm font-bold">Lost & Found</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Moderation</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Review student reports, mark items resolved, or delete improper submissions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/institute-services/lost-and-found">Moderate Lost & Found</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 8: Campus Marketplace */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="h-4 w-4 text-teal-600" />
+                        <CardTitle className="text-sm font-bold">Campus Marketplace</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Moderation</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Oversee peer listings for books, cycles, and electronics; mark sold or remove
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/institute-services/marketplace">Moderate Marketplace</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                {/* Module 9: Hostel Maintenance */}
+                <Card className="border-border hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wrench className="h-4 w-4 text-orange-600" />
+                        <CardTitle className="text-sm font-bold">Hostel Maintenance</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">Warden / Staff</Badge>
+                    </div>
+                    <CardDescription className="text-xs">
+                      Assign maintenance technicians, update complaint progress and resolve tickets
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="pt-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs w-full">
+                      <Link href="/institute-services/hostel-complaints">Manage Hostel Tickets</Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

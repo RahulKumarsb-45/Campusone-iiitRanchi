@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Briefcase, Search, Plus, MapPin, Calendar, ExternalLink, ArrowLeft, Clock } from "lucide-react"
+import { Briefcase, Search, Plus, MapPin, Calendar, ExternalLink, ArrowLeft, Clock, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,11 +16,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchInternships, createInternship, isStaffOrAdmin, type InternshipType } from "@/lib/supabase"
+import {
+  fetchInternships,
+  createInternship,
+  updateInternship,
+  deleteInternship,
+  isStaffOrAdmin,
+  type InternshipType,
+} from "@/lib/supabase"
 
 export default function InternshipsPage() {
   const { user } = useAuth()
@@ -29,11 +46,25 @@ export default function InternshipsPage() {
   const [search, setSearch] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingItem, setEditingItem] = useState<InternshipType | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const [form, setForm] = useState({
     title: "",
     company: "",
     role_type: "Software Engineering",
+    stipend: "",
+    location: "",
+    deadline: "",
+    eligibility: "",
+    description: "",
+    apply_link: "",
+  })
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    company: "",
+    role_type: "",
     stipend: "",
     location: "",
     deadline: "",
@@ -93,12 +124,87 @@ export default function InternshipsPage() {
       } else {
         toast({ title: "Internship posted", description: "Opportunity is now listed on CampusOne." })
         setShowAddModal(false)
+        setForm({
+          title: "",
+          company: "",
+          role_type: "Software Engineering",
+          stipend: "",
+          location: "",
+          deadline: "",
+          eligibility: "",
+          description: "",
+          apply_link: "",
+        })
         loadData()
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const openEditModal = (item: InternshipType) => {
+    setEditingItem(item)
+    setEditForm({
+      title: item.title,
+      company: item.company,
+      role_type: item.role_type,
+      stipend: item.stipend,
+      location: item.location,
+      deadline: item.deadline ? item.deadline.slice(0, 10) : "",
+      eligibility: item.eligibility,
+      description: item.description,
+      apply_link: item.apply_link || "",
+    })
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem || !user || !isStaffOrAdmin(user.role)) return
+
+    setIsSubmitting(true)
+    try {
+      const res = await updateInternship(editingItem.id, {
+        title: editForm.title.trim(),
+        company: editForm.company.trim(),
+        role_type: editForm.role_type.trim(),
+        stipend: editForm.stipend.trim(),
+        location: editForm.location.trim(),
+        deadline: editForm.deadline ? new Date(editForm.deadline).toISOString() : editingItem.deadline,
+        eligibility: editForm.eligibility.trim(),
+        description: editForm.description.trim(),
+        apply_link: editForm.apply_link.trim() || undefined,
+      })
+
+      if (res.error) {
+        toast({ title: "Update failed", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Internship updated", description: "Details saved successfully." })
+        setEditingItem(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingId || !user || !isStaffOrAdmin(user.role)) return
+
+    try {
+      const res = await deleteInternship(deletingId)
+      if (res.error) {
+        toast({ title: "Failed to delete", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Internship deleted", description: "Listing has been removed." })
+        setDeletingId(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
     }
   }
 
@@ -189,18 +295,42 @@ export default function InternshipsPage() {
                 </div>
               </CardContent>
 
-              <CardFooter className="pt-3 border-t border-border">
-                {item.apply_link ? (
-                  <Button asChild size="sm" className="w-full bg-black text-white hover:bg-neutral-800 text-xs gap-1.5">
-                    <a href={item.apply_link} target="_blank" rel="noopener noreferrer">
-                      Apply Now <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" className="w-full text-xs" disabled>
-                    Apply on Campus Notice Board
-                  </Button>
-                )}
+              <CardFooter className="pt-3 border-t border-border flex flex-col gap-2">
+                <div className="w-full flex items-center justify-between gap-2">
+                  {item.apply_link ? (
+                    <Button asChild size="sm" className="flex-1 bg-black text-white hover:bg-neutral-800 text-xs gap-1.5">
+                      <a href={item.apply_link} target="_blank" rel="noopener noreferrer">
+                        Apply Now <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="flex-1 text-xs" disabled>
+                      Apply on Campus Notice Board
+                    </Button>
+                  )}
+
+                  {user && isStaffOrAdmin(user.role) && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => openEditModal(item)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setDeletingId(item.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardFooter>
             </Card>
           ))}
@@ -318,6 +448,132 @@ export default function InternshipsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Internship Modal */}
+      <Dialog open={!!editingItem} onOpenChange={(open) => { if (!open) setEditingItem(null) }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Internship Opportunity</DialogTitle>
+            <DialogDescription>Modify internship role, stipend, and deadlines</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-title">Role Title *</Label>
+                <Input
+                  id="edit-title"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-comp">Company *</Label>
+                <Input
+                  id="edit-comp"
+                  value={editForm.company}
+                  onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-stipend">Stipend *</Label>
+                <Input
+                  id="edit-stipend"
+                  value={editForm.stipend}
+                  onChange={(e) => setEditForm({ ...editForm, stipend: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-loc">Location *</Label>
+                <Input
+                  id="edit-loc"
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-dead">Application Deadline *</Label>
+                <Input
+                  id="edit-dead"
+                  type="date"
+                  value={editForm.deadline}
+                  onChange={(e) => setEditForm({ ...editForm, deadline: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-link">Application Link</Label>
+                <Input
+                  id="edit-link"
+                  value={editForm.apply_link}
+                  onChange={(e) => setEditForm({ ...editForm, apply_link: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-elig">Eligibility Criteria *</Label>
+              <Input
+                id="edit-elig"
+                value={editForm.eligibility}
+                onChange={(e) => setEditForm({ ...editForm, eligibility: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-desc">Description *</Label>
+              <Textarea
+                id="edit-desc"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                rows={3}
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingItem(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting} className="bg-black text-white hover:bg-neutral-800">
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Internship Listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this internship drive? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

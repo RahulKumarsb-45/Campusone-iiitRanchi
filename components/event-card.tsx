@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { EventType } from "@/lib/supabase"
+import { getEventImage, getFallbackEventImage } from "@/lib/event-images"
 
 interface EventCardProps {
   event: EventType
@@ -57,7 +58,6 @@ const categoryColors = {
     badge: "bg-pink-500",
     text: "text-pink-700 dark:text-pink-300",
   },
-  // Default color scheme
   default: {
     bg: "from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20",
     border: "border-gray-200 dark:border-gray-800",
@@ -68,10 +68,15 @@ const categoryColors = {
 
 export function EventCard({ event, className }: EventCardProps) {
   const [isFavorite, setIsFavorite] = useState(false)
+  const [imgSrc, setImgSrc] = useState(() => getEventImage(event))
   const eventDate = new Date(event.date)
 
-  // Get color scheme based on event category
-  const colorScheme = categoryColors[event.category as keyof typeof categoryColors] || categoryColors.default
+  // Get color scheme based on event category (case-insensitive)
+  const catKey = (event.category || "").toLowerCase()
+  const colorScheme = categoryColors[catKey as keyof typeof categoryColors] || categoryColors.default
+
+  const isFull = event.max_participants > 0 && event.current_participants >= event.max_participants
+  const spotsLeft = event.max_participants > 0 ? Math.max(0, event.max_participants - event.current_participants) : null
 
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite)
@@ -85,7 +90,6 @@ export function EventCard({ event, className }: EventCardProps) {
   }
 
   const shareEvent = () => {
-    // In a real app, this would use the Web Share API
     if (navigator.share) {
       navigator
         .share({
@@ -97,7 +101,7 @@ export function EventCard({ event, className }: EventCardProps) {
     } else {
       toast({
         title: "Share event",
-        description: `Sharing ${event.title} with your friends.`,
+        description: `Link to ${event.title} copied.`,
         duration: 3000,
       })
     }
@@ -115,59 +119,85 @@ export function EventCard({ event, className }: EventCardProps) {
         }}
         className={cn("", className)}
       >
-        <Card className={cn("h-full overflow-hidden border bg-gradient-to-br", colorScheme.border, colorScheme.bg)}>
-          <div className="relative h-48 overflow-hidden">
-            <img
-              src={event.image || "/placeholder.svg"}
-              alt={event.title}
-              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-            />
-            <div className="absolute right-2 top-2 flex gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
-                    onClick={toggleFavorite}
-                  >
-                    <Heart className={cn("h-4 w-4", isFavorite ? "fill-red-500 text-red-500" : "")} />
-                    <span className="sr-only">{isFavorite ? "Remove from favorites" : "Add to favorites"}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{isFavorite ? "Remove from favorites" : "Add to favorites"}</TooltipContent>
-              </Tooltip>
+        <Card className={cn("h-full overflow-hidden border bg-gradient-to-br flex flex-col justify-between", colorScheme.border, colorScheme.bg)}>
+          <div>
+            <div className="relative h-48 overflow-hidden bg-neutral-900 group">
+              <Link href={`/events/${event.id}`} className="block h-full w-full cursor-pointer">
+                <img
+                  src={imgSrc}
+                  alt={event.title}
+                  onError={() => {
+                    setImgSrc(getFallbackEventImage(event.category, event.title, event.description, event.tags))
+                  }}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              </Link>
+              <div className="absolute right-2 top-2 flex gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+                      onClick={toggleFavorite}
+                    >
+                      <Heart className={cn("h-4 w-4", isFavorite ? "fill-red-500 text-red-500" : "")} />
+                      <span className="sr-only">{isFavorite ? "Remove from favorites" : "Add to favorites"}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isFavorite ? "Remove from favorites" : "Add to favorites"}</TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="secondary"
-                    className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
-                    onClick={shareEvent}
-                  >
-                    <Share2 className="h-4 w-4" />
-                    <span className="sr-only">Share event</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share event</TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="absolute left-2 top-2 flex gap-2">
-              <Badge className={cn("backdrop-blur-sm", colorScheme.badge)}>
-                {event.category.charAt(0).toUpperCase() + event.category.slice(1)}
-              </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm"
+                      onClick={shareEvent}
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span className="sr-only">Share event</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share event</TooltipContent>
+                </Tooltip>
+              </div>
 
-              {event.is_paid && (
-                <Badge variant="outline" className="bg-background/80 backdrop-blur-sm">
-                  ₹{event.price}
+              <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+                <Badge className={cn("backdrop-blur-sm text-xs font-semibold", colorScheme.badge)}>
+                  {event.category ? event.category.charAt(0).toUpperCase() + event.category.slice(1) : "General"}
                 </Badge>
-              )}
+
+                {event.is_paid ? (
+                  <Badge variant="outline" className="bg-background/90 font-bold backdrop-blur-sm">
+                    ₹{event.price}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-semibold backdrop-blur-sm border-emerald-500/30">
+                    Free
+                  </Badge>
+                )}
+
+                {isFull && (
+                  <Badge variant="destructive" className="text-[10px] uppercase font-bold">
+                    Full
+                  </Badge>
+                )}
+                {!isFull && spotsLeft !== null && spotsLeft <= 15 && (
+                  <Badge className="bg-amber-500 text-black text-[10px] font-bold">
+                    {spotsLeft} spots left
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
 
           <CardHeader className="p-4 pb-2">
-            <CardTitle className={cn("line-clamp-1 text-xl", colorScheme.text)}>{event.title}</CardTitle>
+            <CardTitle className={cn("line-clamp-1 text-xl", colorScheme.text)}>
+              <Link href={`/events/${event.id}`} className="hover:underline">
+                {event.title}
+              </Link>
+            </CardTitle>
             <CardDescription className="flex items-center gap-1 text-sm">
               <Calendar className="h-3.5 w-3.5" />
               {format(eventDate, "MMMM d, yyyy")}
@@ -192,8 +222,9 @@ export function EventCard({ event, className }: EventCardProps) {
                 ))}
             </div>
           </CardContent>
+        </div>
 
-          <CardFooter className="flex justify-between p-4 pt-0">
+        <CardFooter className="flex justify-between p-4 pt-0">
             <div className="text-xs text-muted-foreground">By {event.organizer}</div>
             <Button asChild size="sm">
               <Link href={`/events/${event.id}`}>View Details</Link>

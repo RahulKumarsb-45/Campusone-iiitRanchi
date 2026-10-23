@@ -23,14 +23,17 @@ export default function EventsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "upcoming" | "past">("all")
   const [sortBy, setSortBy] = useState("date-asc")
   const [filteredEvents, setFilteredEvents] = useState<EventType[]>([])
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const loadEvents = async () => {
     setLoading(true)
+    setErrorMsg(null)
     try {
       const data = await fetchEvents()
       setEvents(data)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch events:", err)
+      setErrorMsg(err?.message || "Failed to load campus events. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -55,7 +58,17 @@ export default function EventsPage() {
         event.category.toLowerCase().includes(searchQuery.toLowerCase())
 
       const matchesCategory =
-        selectedCategories.length === 0 || selectedCategories.includes(event.category)
+        selectedCategories.length === 0 ||
+        selectedCategories.some((sc) => {
+          const scLower = sc.toLowerCase()
+          const evCatLower = (event.category || "").toLowerCase()
+          return (
+            evCatLower === scLower ||
+            (scLower === "hackathon" && evCatLower.includes("hack")) ||
+            (scLower === "workshops" && (evCatLower.includes("workshop") || evCatLower.includes("lab"))) ||
+            (scLower === "seminars" && (evCatLower.includes("seminar") || evCatLower.includes("summit")))
+          )
+        })
 
       const eventTime = new Date(event.date).getTime()
       const matchesStatus =
@@ -292,6 +305,24 @@ export default function EventsPage() {
         </div>
       )}
 
+      {/* Error Banner State if fetch failed */}
+      {errorMsg && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50/80 p-4 text-xs text-red-900 dark:border-red-950 dark:bg-red-950/30 dark:text-red-300">
+          <div className="flex items-center gap-2">
+            <span className="font-bold">Database Notice:</span>
+            <span>{errorMsg}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={loadEvents}
+            className="self-start sm:self-auto border-red-300 bg-white hover:bg-red-100 text-red-900 dark:border-red-900 dark:bg-black dark:text-red-200"
+          >
+            Retry Connection
+          </Button>
+        </div>
+      )}
+
       {/* Events Grid / Loading / Empty State */}
       {loading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -306,7 +337,9 @@ export default function EventsPage() {
           </div>
           <h3 className="mt-4 text-base font-semibold">No events matching criteria</h3>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground max-w-sm">
-            Try adjusting your search query, clearing filters, or create a new event.
+            {events.length > 0
+              ? `None of the ${events.length} available campus events match your selected filters.`
+              : "No campus events are currently listed in the directory."}
           </p>
           <div className="mt-4 flex gap-2">
             <Button

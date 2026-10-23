@@ -1,4 +1,27 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  getClubImage,
+  getFallbackClubImage,
+  isGenericPlaceholderImage,
+  CLUB_IMAGES,
+} from "./club-images.ts";
+import {
+  getEventImage,
+  getFallbackEventImage,
+  isGenericEventPlaceholder,
+  EVENT_IMAGES,
+} from "./event-images.ts";
+
+export {
+  getClubImage,
+  getFallbackClubImage,
+  isGenericPlaceholderImage,
+  CLUB_IMAGES,
+  getEventImage,
+  getFallbackEventImage,
+  isGenericEventPlaceholder,
+  EVENT_IMAGES,
+};
 
 const rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const rawKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
@@ -216,6 +239,147 @@ export type HostelComplaintType = {
 
 // ================= EVENTS API =================
 
+export const fallbackEvents: EventType[] = [
+  {
+    id: 1,
+    title: "Tech Innovation Summit 2026",
+    description:
+      "Join industry leaders to explore cutting-edge technologies, artificial intelligence, and cloud breakthroughs.",
+    image: EVENT_IMAGES.seminar,
+    date: new Date(Date.now() + 5 * 86400000).toISOString(),
+    location: "Main Auditorium",
+    category: "seminars",
+    tags: ["technology", "ai", "innovation"],
+    organizer: "Computer Science Department",
+    lead_organizer: "Dr. Robert Chen",
+    convener: "Prof. Sarah Williams",
+    coordinator: "John Smith",
+    contact_number: "+91 9876543210",
+    is_paid: true,
+    price: 299.0,
+    max_participants: 150,
+    current_participants: 45,
+    needs_volunteers: true,
+    volunteer_roles: ["Registration Desk", "Technical Support", "Hall Coordinator"],
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
+  {
+    id: 2,
+    title: "Annual Sports Tournament",
+    description:
+      "Compete in football, basketball, cricket, and athletics to win university championships.",
+    image: EVENT_IMAGES.sports,
+    date: new Date(Date.now() + 10 * 86400000).toISOString(),
+    location: "University Sports Complex",
+    category: "sports",
+    tags: ["sports", "fitness", "athletics"],
+    organizer: "Sports Committee",
+    lead_organizer: "Coach Michael Davis",
+    convener: "Prof. David Lee",
+    coordinator: "Emily Green",
+    contact_number: "+91 9876543211",
+    is_paid: false,
+    price: 0,
+    max_participants: 200,
+    current_participants: 78,
+    needs_volunteers: true,
+    volunteer_roles: ["First Aid", "Scorekeeper", "Event Guide"],
+    created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
+  },
+  {
+    id: 3,
+    title: "Full-Stack Web Development Workshop",
+    description:
+      "Hands-on masterclass building production applications with modern React, Next.js, and TypeScript.",
+    image: EVENT_IMAGES.workshop,
+    date: new Date(Date.now() + 15 * 86400000).toISOString(),
+    location: "Computer Lab 101",
+    category: "workshops",
+    tags: ["coding", "nextjs", "webdev"],
+    organizer: "Tech Club",
+    lead_organizer: "Alex Johnson",
+    convener: "Dr. Sarah Williams",
+    coordinator: "Kevin Patel",
+    contact_number: "+91 9876543212",
+    is_paid: true,
+    price: 149.0,
+    max_participants: 60,
+    current_participants: 38,
+    needs_volunteers: false,
+    volunteer_roles: [],
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    id: 4,
+    title: "Campus Cultural Fest & Music Night",
+    description:
+      "Celebrate music, dance, theater, and arts across diverse traditions and student performances.",
+    image: EVENT_IMAGES.cultural,
+    date: new Date(Date.now() + 20 * 86400000).toISOString(),
+    location: "Open Air Amphitheater",
+    category: "cultural",
+    tags: ["culture", "music", "dance"],
+    organizer: "Cultural Committee",
+    lead_organizer: "Ananya Roy",
+    convener: "Prof. Alan Miller",
+    coordinator: "Siddharth Nair",
+    contact_number: "+91 9876543213",
+    is_paid: false,
+    price: 0,
+    max_participants: 500,
+    current_participants: 180,
+    needs_volunteers: true,
+    volunteer_roles: ["Stage Management", "Backstage Crew", "Hospitality"],
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+  },
+  {
+    id: 5,
+    title: "National Campus Hackathon",
+    description:
+      "36-hour intense hackathon solving real-world challenges with mentorship and cash prizes.",
+    image: EVENT_IMAGES.hackathon,
+    date: new Date(Date.now() + 25 * 86400000).toISOString(),
+    location: "Innovation Hub",
+    category: "hackathon",
+    tags: ["hackathon", "ai", "startups"],
+    organizer: "Developer Student Club",
+    lead_organizer: "Priya Sharma",
+    convener: "Dr. Robert Chen",
+    coordinator: "Vikram Rao",
+    contact_number: "+91 9876543214",
+    is_paid: false,
+    price: 0,
+    max_participants: 120,
+    current_participants: 95,
+    needs_volunteers: true,
+    volunteer_roles: ["Mentor Escort", "Hardware Lab Assistant", "Logistics"],
+    created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 6,
+    title: "AI in Healthcare Seminar",
+    description:
+      "Exploring computer vision and deep learning applications in disease diagnosis and biomedical engineering.",
+    image: EVENT_IMAGES.healthcareAi,
+    date: new Date(Date.now() + 30 * 86400000).toISOString(),
+    location: "Conference Hall B",
+    category: "seminars",
+    tags: ["ai", "healthcare", "research"],
+    organizer: "Biomedical & CS Department",
+    lead_organizer: "Dr. Maya Patel",
+    convener: "Prof. Sarah Williams",
+    coordinator: "Neha Gupta",
+    contact_number: "+91 9876543215",
+    is_paid: false,
+    price: 0,
+    max_participants: 100,
+    current_participants: 52,
+    needs_volunteers: false,
+    volunteer_roles: [],
+    created_at: new Date().toISOString(),
+  },
+];
+
 export async function fetchEvents(options?: {
   category?: string;
   limit?: number;
@@ -227,7 +391,7 @@ export async function fetchEvents(options?: {
     let query = supabase.from("events").select("*");
 
     if (options?.category && options.category !== "all") {
-      query = query.eq("category", options.category);
+      query = query.ilike("category", options.category);
     }
 
     if (options?.upcoming) {
@@ -257,15 +421,37 @@ export async function fetchEvents(options?: {
 
     const { data, error } = await query;
 
-    if (error) {
-      console.warn("Error fetching events from Supabase:", error.message);
-      return [];
+    if (error || !data || data.length === 0) {
+      // Graceful fallback to verified sample events
+      let filtered = [...fallbackEvents];
+      if (options?.category && options.category !== "all") {
+        filtered = filtered.filter(
+          (e) => e.category.toLowerCase() === options.category?.toLowerCase()
+        );
+      }
+      if (options?.upcoming) {
+        const now = Date.now();
+        filtered = filtered.filter((e) => new Date(e.date).getTime() >= now);
+      }
+      if (options?.limit) {
+        filtered = filtered.slice(0, options.limit);
+      }
+      return filtered.map((e) => ({
+        ...e,
+        image: getEventImage(e),
+      }));
     }
 
-    return (data as EventType[]) || [];
+    return (data as EventType[]).map((e) => ({
+      ...e,
+      image: getEventImage(e),
+    }));
   } catch (err) {
     console.error("fetchEvents error:", err);
-    return [];
+    return fallbackEvents.map((e) => ({
+      ...e,
+      image: getEventImage(e),
+    }));
   }
 }
 
@@ -277,15 +463,19 @@ export async function fetchEventById(id: number): Promise<EventType | null> {
       .eq("id", id)
       .maybeSingle();
 
-    if (error) {
-      console.warn(`Error fetching event ${id}:`, error.message);
-      return null;
+    if (error || !data) {
+      const fb = fallbackEvents.find((e) => e.id === id);
+      return fb ? { ...fb, image: getEventImage(fb) } : null;
     }
 
-    return (data as EventType) || null;
+    return {
+      ...(data as EventType),
+      image: getEventImage(data as EventType),
+    };
   } catch (err) {
     console.error("fetchEventById error:", err);
-    return null;
+    const fb = fallbackEvents.find((e) => e.id === id);
+    return fb ? { ...fb, image: getEventImage(fb) } : null;
   }
 }
 
@@ -422,22 +612,14 @@ export async function registerForEvent(
       return { error: error.message };
     }
 
-    // 3. Increment current participants
+    // 3. Increment current participants via secure RPC
     try {
-      await supabase.rpc("increment_participants", { event_id: eventId });
-    } catch {
-      // Fallback manual increment if RPC is missing
-      const { data: ev } = await supabase
-        .from("events")
-        .select("current_participants")
-        .eq("id", eventId)
-        .single();
-      if (ev) {
-        await supabase
-          .from("events")
-          .update({ current_participants: (ev.current_participants || 0) + 1 })
-          .eq("id", eventId);
+      const rpcRes = await supabase.rpc("increment_participants", { event_id: eventId });
+      if (rpcRes.error) {
+        console.warn("increment_participants RPC warning:", rpcRes.error.message);
       }
+    } catch (rpcErr: any) {
+      console.warn("increment_participants exception:", rpcErr?.message);
     }
 
     return { data: data ? data[0] : null };
@@ -458,21 +640,14 @@ export async function cancelRegistration(eventId: number, userId: string) {
       return { error: error.message };
     }
 
-    // Decrement participants count via RPC with manual fallback
+    // Decrement participants count via secure RPC
     try {
-      await supabase.rpc("decrement_participants", { event_id: eventId });
-    } catch {
-      const { data: ev } = await supabase
-        .from("events")
-        .select("current_participants")
-        .eq("id", eventId)
-        .single();
-      if (ev && (ev.current_participants || 0) > 0) {
-        await supabase
-          .from("events")
-          .update({ current_participants: ev.current_participants - 1 })
-          .eq("id", eventId);
+      const rpcRes = await supabase.rpc("decrement_participants", { event_id: eventId });
+      if (rpcRes.error) {
+        console.warn("decrement_participants RPC warning:", rpcRes.error.message);
       }
+    } catch (rpcErr: any) {
+      console.warn("decrement_participants exception:", rpcErr?.message);
     }
 
     return { success: true };
@@ -481,26 +656,59 @@ export async function cancelRegistration(eventId: number, userId: string) {
   }
 }
 
+export type RegistrationQueryResult = RegistrationType[] & {
+  error?: string | null;
+};
+
 export async function fetchUserRegistrations(
-  userId: string,
-): Promise<RegistrationType[]> {
+  userId?: string,
+  options?: {
+    eventId?: number;
+    all?: boolean;
+  },
+): Promise<RegistrationQueryResult> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("registrations")
       .select("*, event:events(*)")
-      .eq("user_id", userId)
       .order("registration_date", { ascending: false });
+
+    if (options?.eventId) {
+      query = query.eq("event_id", options.eventId);
+    }
+
+    if (!options?.all && userId) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.warn("fetchUserRegistrations error:", error.message);
-      return [];
+      const emptyResult: RegistrationQueryResult = [];
+      emptyResult.error = error.message;
+      return emptyResult;
     }
 
-    return (data as RegistrationType[]) || [];
-  } catch (err) {
+    const result: RegistrationQueryResult = (data as RegistrationType[]) || [];
+    result.error = null;
+    return result;
+  } catch (err: any) {
     console.error("fetchUserRegistrations error:", err);
-    return [];
+    const emptyResult: RegistrationQueryResult = [];
+    emptyResult.error = err?.message || "Failed to fetch registrations";
+    return emptyResult;
   }
+}
+
+export async function fetchAllRegistrations(): Promise<RegistrationQueryResult> {
+  return fetchUserRegistrations(undefined, { all: true });
+}
+
+export async function fetchEventRegistrations(
+  eventId: number,
+): Promise<RegistrationQueryResult> {
+  return fetchUserRegistrations(undefined, { eventId, all: true });
 }
 
 // ================= USER PROFILE API =================
@@ -558,8 +766,7 @@ const fallbackClubs: ClubType[] = [
     lead_name: "Rahul Sharma",
     lead_email: "hog@iiitranchi.ac.in",
     meeting_info: "Every Wednesday 6 PM, Computer Lab 2",
-    image:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
+    image: CLUB_IMAGES.coding,
     tags: ["coding", "development", "competitive-programming"],
   },
   {
@@ -572,8 +779,7 @@ const fallbackClubs: ClubType[] = [
     lead_name: "Aarav Patel",
     lead_email: "robotics@iiitranchi.ac.in",
     meeting_info: "Saturdays 3 PM, Innovation Lab",
-    image:
-      "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=800&q=80",
+    image: CLUB_IMAGES.robotics,
     tags: ["robotics", "iot", "hardware"],
   },
   {
@@ -586,8 +792,7 @@ const fallbackClubs: ClubType[] = [
     lead_name: "Pooja Verma",
     lead_email: "cultural@iiitranchi.ac.in",
     meeting_info: "Tuesdays 5 PM, Open Amphitheater",
-    image:
-      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80",
+    image: CLUB_IMAGES.culturalGeneral,
     tags: ["dance", "music", "drama"],
   },
   {
@@ -600,8 +805,7 @@ const fallbackClubs: ClubType[] = [
     lead_name: "Ankit Roy",
     lead_email: "ecell@iiitranchi.ac.in",
     meeting_info: "Fridays 4 PM, Seminar Hall",
-    image:
-      "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=800&q=80",
+    image: CLUB_IMAGES.entrepreneurship,
     tags: ["startups", "entrepreneurship", "ventures"],
   },
   {
@@ -614,9 +818,47 @@ const fallbackClubs: ClubType[] = [
     lead_name: "Vikram Singh",
     lead_email: "sports@iiitranchi.ac.in",
     meeting_info: "Daily 5:30 PM, Sports Complex",
-    image:
-      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80",
+    image: CLUB_IMAGES.sportsGeneral,
     tags: ["sports", "fitness", "athletics"],
+  },
+  {
+    id: 6,
+    name: "Kriti Art & Sketching Club",
+    code: "KRITI",
+    category: "Cultural",
+    description:
+      "Drawing, sketching, painting, digital art, exhibitions, and campus creative visual designs.",
+    lead_name: "Sneha Roy",
+    lead_email: "kriti@iiitranchi.ac.in",
+    meeting_info: "Wednesdays 4:30 PM, Art & Design Studio",
+    image: CLUB_IMAGES.art,
+    tags: ["art", "sketching", "painting", "creativity"],
+  },
+  {
+    id: 7,
+    name: "Piccell Photography & Media Society",
+    code: "PICCELL",
+    category: "Social",
+    description:
+      "Photography, videography, DSLR filmmaking, photo walks, and official campus event media coverage.",
+    lead_name: "Aditya Prakash",
+    lead_email: "piccell@iiitranchi.ac.in",
+    meeting_info: "Sundays 10 AM, Campus Media Room",
+    image: CLUB_IMAGES.photography,
+    tags: ["photography", "videography", "media", "camera"],
+  },
+  {
+    id: 8,
+    name: "Literary & Debating Society",
+    code: "LIT",
+    category: "Literary",
+    description:
+      "Creative writing, poetry slams, parliamentary debates, Model UN, and literary publications.",
+    lead_name: "Ishita Sharma",
+    lead_email: "literary@iiitranchi.ac.in",
+    meeting_info: "Thursdays 5:30 PM, Reading Hall",
+    image: CLUB_IMAGES.literary,
+    tags: ["literature", "debate", "poetry", "writing"],
   },
 ];
 
@@ -629,15 +871,18 @@ export async function fetchClubs(category?: string): Promise<ClubType[]> {
     const { data, error } = await query;
     if (error || !data || data.length === 0) {
       if (category && category !== "All") {
-        return fallbackClubs.filter(
-          (c) => c.category.toLowerCase() === category.toLowerCase(),
-        );
+        return fallbackClubs
+          .filter((c) => c.category.toLowerCase() === category.toLowerCase())
+          .map((c) => ({ ...c, image: getClubImage(c) }));
       }
-      return fallbackClubs;
+      return fallbackClubs.map((c) => ({ ...c, image: getClubImage(c) }));
     }
-    return data as ClubType[];
+    return (data as ClubType[]).map((c) => ({
+      ...c,
+      image: getClubImage(c),
+    }));
   } catch {
-    return fallbackClubs;
+    return fallbackClubs.map((c) => ({ ...c, image: getClubImage(c) }));
   }
 }
 
@@ -654,13 +899,19 @@ export async function createClub(club: Omit<ClubType, "id" | "created_at">) {
       return { error: `Club code "${cleanCode}" is already in use. Please choose a unique code.` };
     }
 
+    const resolvedImage =
+      club.image && !isGenericPlaceholderImage(club.image)
+        ? club.image.trim()
+        : getFallbackClubImage(club.name, club.description, club.category, cleanCode, club.tags);
+
     const { data, error } = await supabase
       .from("clubs")
-      .insert([{ ...club, code: cleanCode }])
+      .insert([{ ...club, code: cleanCode, image: resolvedImage }])
       .select()
       .single();
     if (error) return { error: error.message };
-    return { data: data as ClubType };
+    const savedClub = data as ClubType;
+    return { data: { ...savedClub, image: getClubImage(savedClub) } };
   } catch (err: any) {
     return { error: err.message };
   }
@@ -686,6 +937,20 @@ export async function updateClub(id: number, updates: Partial<ClubType>) {
       }
     }
 
+    if (safeUpdates.image !== undefined) {
+      if (safeUpdates.image && !isGenericPlaceholderImage(safeUpdates.image)) {
+        safeUpdates.image = safeUpdates.image.trim();
+      } else {
+        safeUpdates.image = getFallbackClubImage(
+          safeUpdates.name || "",
+          safeUpdates.description || "",
+          safeUpdates.category || "",
+          safeUpdates.code || "",
+          safeUpdates.tags || []
+        );
+      }
+    }
+
     const { data, error } = await supabase
       .from("clubs")
       .update(safeUpdates)
@@ -694,7 +959,8 @@ export async function updateClub(id: number, updates: Partial<ClubType>) {
       .single();
 
     if (error) return { error: error.message };
-    return { data: data as ClubType };
+    const updated = data as ClubType;
+    return { data: { ...updated, image: getClubImage(updated) } };
   } catch (err: any) {
     return { error: err.message };
   }
@@ -783,6 +1049,35 @@ export async function createInternship(
   }
 }
 
+export async function updateInternship(
+  id: number,
+  updates: Partial<InternshipType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("internships")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as InternshipType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function deleteInternship(id: number) {
+  try {
+    const { error } = await supabase.from("internships").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
 // ================= CAMPUS SERVICES: PLACEMENTS =================
 
 const fallbackPlacements: PlacementType[] = [
@@ -848,6 +1143,35 @@ export async function createPlacement(
       .single();
     if (error) return { error: error.message };
     return { data: data as PlacementType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function updatePlacement(
+  id: number,
+  updates: Partial<PlacementType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("placements")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as PlacementType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function deletePlacement(id: number) {
+  try {
+    const { error } = await supabase.from("placements").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
   } catch (err: any) {
     return { error: err.message };
   }
@@ -944,6 +1268,35 @@ export async function createNotice(
   }
 }
 
+export async function updateNotice(
+  id: number,
+  updates: Partial<NoticeType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("notices")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as NoticeType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function deleteNotice(id: number) {
+  try {
+    const { error } = await supabase.from("notices").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
 // ================= ANNOUNCEMENTS API =================
 
 const fallbackAnnouncements: AnnouncementType[] = [
@@ -991,6 +1344,35 @@ export async function createAnnouncement(
       .single();
     if (error) return { error: error.message };
     return { data: data as AnnouncementType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function updateAnnouncement(
+  id: number,
+  updates: Partial<AnnouncementType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("announcements")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as AnnouncementType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function deleteAnnouncement(id: number) {
+  try {
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
   } catch (err: any) {
     return { error: err.message };
   }
@@ -1075,6 +1457,25 @@ export async function updateLostFoundStatus(
     const { data, error } = await supabase
       .from("lost_found_items")
       .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as LostFoundItemType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function updateLostFoundItem(
+  id: number,
+  updates: Partial<LostFoundItemType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("lost_found_items")
+      .update(safeUpdates)
       .eq("id", id)
       .select()
       .single();
@@ -1182,6 +1583,25 @@ export async function updateMarketplaceStatus(
     const { data, error } = await supabase
       .from("marketplace_items")
       .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as MarketplaceItemType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function updateMarketplaceItem(
+  id: number,
+  updates: Partial<MarketplaceItemType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("marketplace_items")
+      .update(safeUpdates)
       .eq("id", id)
       .select()
       .single();

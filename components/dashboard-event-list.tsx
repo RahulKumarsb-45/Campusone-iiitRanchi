@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { format } from "date-fns"
-import { Calendar, Clock, MapPin, MoreHorizontal, Trash2, Eye, ExternalLink } from "lucide-react"
+import { Calendar, Clock, MapPin, MoreHorizontal, Trash2, Eye, ExternalLink, AlertCircle, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -16,6 +16,8 @@ interface DashboardEventListProps {
   mode?: "registrations" | "created"
   onCancelRegistration?: (eventId: number) => void
   onDeleteEvent?: (eventId: number) => void
+  errorMessage?: string | null
+  onRetry?: () => void
 }
 
 export function DashboardEventList({
@@ -24,8 +26,33 @@ export function DashboardEventList({
   mode = "registrations",
   onCancelRegistration,
   onDeleteEvent,
+  errorMessage,
+  onRetry,
 }: DashboardEventListProps) {
   if (mode === "registrations") {
+    if (errorMessage) {
+      return (
+        <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center text-destructive">
+          <AlertCircle className="h-8 w-8 text-destructive mb-2 opacity-90" />
+          <p className="text-sm font-semibold text-destructive">Could not load registrations</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-md">
+            {errorMessage}
+          </p>
+          {onRetry && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRetry}
+              className="mt-4 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry Connection
+            </Button>
+          )}
+        </div>
+      )
+    }
+
     if (registrations.length === 0) {
       return (
         <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center">

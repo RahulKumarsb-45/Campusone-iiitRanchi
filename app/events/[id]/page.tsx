@@ -57,6 +57,9 @@ import {
   registerForEvent,
   cancelRegistration,
   deleteEvent,
+  isStaffOrAdmin,
+  getEventImage,
+  getFallbackEventImage,
   type EventType,
 } from "@/lib/supabase"
 
@@ -255,7 +258,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const eventDate = new Date(event.date)
   const isFull = event.max_participants > 0 && event.current_participants >= event.max_participants
   const isPast = eventDate.getTime() < Date.now()
-  const isCreatorOrAdmin = user && (user.id === event.user_id || user.role === "admin" || user.role === "faculty")
+  const isCreatorOrAdmin = user && (user.id === event.user_id || isStaffOrAdmin(user.role))
 
   return (
     <div className="min-h-screen bg-white dark:bg-black py-8">
@@ -302,10 +305,18 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           {/* Main Content Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Event Banner Image */}
-            <div className="overflow-hidden rounded-2xl border border-border bg-neutral-100 dark:bg-neutral-900 max-h-[420px]">
+            <div className="overflow-hidden rounded-2xl border border-border bg-neutral-900 max-h-[420px]">
               <img
-                src={event.image || "/placeholder.svg?height=400&width=800"}
+                src={getEventImage(event)}
                 alt={event.title}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = getFallbackEventImage(
+                    event.category,
+                    event.title,
+                    event.description,
+                    event.tags
+                  )
+                }}
                 className="w-full h-full object-cover max-h-[420px]"
               />
             </div>

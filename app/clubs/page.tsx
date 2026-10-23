@@ -2,11 +2,33 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Users, Search, Plus, Mail, Calendar, Sparkles, Filter, ExternalLink, Pencil, Trash2, Loader2 } from "lucide-react"
+import {
+  Users,
+  Search,
+  Plus,
+  Mail,
+  Calendar,
+  Sparkles,
+  Filter,
+  ExternalLink,
+  Pencil,
+  Trash2,
+  Loader2,
+  ImageIcon,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -18,10 +40,28 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchClubs, createClub, updateClub, deleteClub, isStaffOrAdmin, type ClubType } from "@/lib/supabase"
+import {
+  fetchClubs,
+  createClub,
+  updateClub,
+  deleteClub,
+  isStaffOrAdmin,
+  type ClubType,
+} from "@/lib/supabase"
+import {
+  getClubImage,
+  getFallbackClubImage,
+  isGenericPlaceholderImage,
+} from "@/lib/club-images"
 
 export default function ClubsPage() {
   const { user } = useAuth()
@@ -34,6 +74,8 @@ export default function ClubsPage() {
   const [editingClub, setEditingClub] = useState<ClubType | null>(null)
   const [deletingClub, setDeletingClub] = useState<ClubType | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [createImageError, setCreateImageError] = useState(false)
+  const [editImageError, setEditImageError] = useState(false)
 
   const [form, setForm] = useState({
     name: "",
@@ -77,7 +119,8 @@ export default function ClubsPage() {
   const canManageClub = (club: ClubType) => {
     if (!user) return false
     if (isStaffOrAdmin(user.role)) return true
-    if (club.lead_email && user.email && club.lead_email.toLowerCase() === user.email.toLowerCase()) return true
+    if (club.lead_email && user.email && club.lead_email.toLowerCase() === user.email.toLowerCase())
+      return true
     return false
   }
 
@@ -114,6 +157,17 @@ export default function ClubsPage() {
 
     setIsSubmitting(true)
     try {
+      const tagsArray = form.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+
+      // Resolve appropriate image if not provided or invalid
+      const resolvedImage =
+        form.image.trim() && !isGenericPlaceholderImage(form.image.trim())
+          ? form.image.trim()
+          : getFallbackClubImage(form.name, form.description, form.category, form.code, tagsArray)
+
       const payload = {
         name: form.name.trim(),
         code: form.code.trim().toUpperCase(),
@@ -122,8 +176,8 @@ export default function ClubsPage() {
         lead_name: form.lead_name.trim(),
         lead_email: form.lead_email.trim(),
         meeting_info: form.meeting_info.trim(),
-        image: form.image.trim() || "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80",
-        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        image: resolvedImage,
+        tags: tagsArray,
       }
 
       const res = await createClub(payload)
@@ -143,6 +197,7 @@ export default function ClubsPage() {
           image: "",
           tags: "",
         })
+        setCreateImageError(false)
         loadData()
       }
     } catch (err: any) {
@@ -154,6 +209,7 @@ export default function ClubsPage() {
 
   const startEditClub = (club: ClubType) => {
     setEditingClub(club)
+    setEditImageError(false)
     setEditForm({
       name: club.name,
       code: club.code,
@@ -162,7 +218,7 @@ export default function ClubsPage() {
       lead_name: club.lead_name,
       lead_email: club.lead_email || "",
       meeting_info: club.meeting_info || "",
-      image: club.image || "",
+      image: isGenericPlaceholderImage(club.image) ? "" : club.image,
       tags: Array.isArray(club.tags) ? club.tags.join(", ") : "",
     })
   }
@@ -171,7 +227,12 @@ export default function ClubsPage() {
     e.preventDefault()
     if (!editingClub || !user) return
 
-    if (!editForm.name.trim() || !editForm.code.trim() || !editForm.lead_name.trim() || !editForm.description.trim()) {
+    if (
+      !editForm.name.trim() ||
+      !editForm.code.trim() ||
+      !editForm.lead_name.trim() ||
+      !editForm.description.trim()
+    ) {
       toast({
         title: "Missing required fields",
         description: "Please fill in all required club details.",
@@ -182,6 +243,22 @@ export default function ClubsPage() {
 
     setIsSubmitting(true)
     try {
+      const tagsArray = editForm.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+
+      const resolvedImage =
+        editForm.image.trim() && !isGenericPlaceholderImage(editForm.image.trim())
+          ? editForm.image.trim()
+          : getFallbackClubImage(
+              editForm.name,
+              editForm.description,
+              editForm.category,
+              editForm.code,
+              tagsArray
+            )
+
       const payload = {
         name: editForm.name.trim(),
         code: editForm.code.trim().toUpperCase(),
@@ -190,8 +267,8 @@ export default function ClubsPage() {
         lead_name: editForm.lead_name.trim(),
         lead_email: editForm.lead_email.trim(),
         meeting_info: editForm.meeting_info.trim(),
-        image: editForm.image.trim() || editingClub.image,
-        tags: editForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        image: resolvedImage,
+        tags: tagsArray,
       }
 
       const res = await updateClub(editingClub.id, payload)
@@ -200,6 +277,7 @@ export default function ClubsPage() {
       } else {
         toast({ title: "Club updated!", description: `${payload.name} details have been saved.` })
         setEditingClub(null)
+        setEditImageError(false)
         loadData()
       }
     } catch (err: any) {
@@ -232,6 +310,30 @@ export default function ClubsPage() {
     }
   }
 
+  // Helper for computing active preview URL in create form
+  const getCreatePreviewUrl = () => {
+    if (form.image.trim() && !createImageError) {
+      return form.image.trim()
+    }
+    const tagsArray = form.tags.split(",").map((t) => t.trim()).filter(Boolean)
+    return getFallbackClubImage(form.name, form.description, form.category, form.code, tagsArray)
+  }
+
+  // Helper for computing active preview URL in edit form
+  const getEditPreviewUrl = () => {
+    if (editForm.image.trim() && !editImageError) {
+      return editForm.image.trim()
+    }
+    const tagsArray = editForm.tags.split(",").map((t) => t.trim()).filter(Boolean)
+    return getFallbackClubImage(
+      editForm.name,
+      editForm.description,
+      editForm.category,
+      editForm.code,
+      tagsArray
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
@@ -241,16 +343,21 @@ export default function ClubsPage() {
             <Users className="h-3.5 w-3.5" />
             IIIT Ranchi Student Societies
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">Campus Clubs & Societies</h1>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">
+            Campus Clubs & Societies
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Discover student clubs, upcoming sessions, workshops, and leadership contacts
+            Discover student clubs, workshops, arts, photography, sports, and technical chapters
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {user && (
             <Button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setShowAddModal(true)
+                setCreateImageError(false)
+              }}
               className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black gap-1.5"
             >
               <Plus className="h-4 w-4" />
@@ -298,24 +405,56 @@ export default function ClubsPage() {
         <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-border p-8 text-center">
           <Users className="h-10 w-10 text-muted-foreground opacity-50 mb-3" />
           <h3 className="font-semibold text-base">No clubs found</h3>
-          <p className="text-xs text-muted-foreground mt-1">Try selecting another category or clear search query.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Try selecting another category or clear your search query.
+          </p>
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredClubs.map((club) => {
             const hasPrivilege = canManageClub(club)
+            const clubImage = getClubImage(club)
+
             return (
-              <Card key={club.id} id={`club-${club.id}`} className="border-border overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div>
-                  <div className="h-44 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                    <img src={club.image} alt={club.name} className="h-full w-full object-cover" />
+              <Card
+                key={club.id}
+                id={`club-${club.id}`}
+                className="group border-border overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"
+              >
+                <div
+                  className="cursor-pointer"
+                  onClick={() => setSelectedClub(club)}
+                >
+                  <div className="relative h-44 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                    <img
+                      src={clubImage}
+                      alt={`${club.name} banner`}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.src = getFallbackClubImage(
+                          club.name,
+                          club.description,
+                          club.category,
+                          club.code,
+                          club.tags
+                        )
+                      }}
+                    />
+                    <div className="absolute top-2.5 right-2.5">
+                      <span className="rounded bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                        {club.code}
+                      </span>
+                    </div>
                   </div>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-xs font-semibold">{club.category}</Badge>
-                      <span className="text-xs font-bold text-muted-foreground">{club.code}</span>
+                      <Badge variant="outline" className="text-xs font-semibold">
+                        {club.category}
+                      </Badge>
                     </div>
-                    <CardTitle className="text-lg font-bold text-foreground">{club.name}</CardTitle>
+                    <CardTitle className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                      {club.name}
+                    </CardTitle>
                     <CardDescription className="text-xs line-clamp-2 mt-1 leading-relaxed">
                       {club.description}
                     </CardDescription>
@@ -330,7 +469,9 @@ export default function ClubsPage() {
                     {club.lead_name && (
                       <div className="flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 text-foreground shrink-0" />
-                        <span>Lead: <strong>{club.lead_name}</strong></span>
+                        <span>
+                          Lead: <strong>{club.lead_name}</strong>
+                        </span>
                       </div>
                     )}
                   </CardContent>
@@ -353,7 +494,7 @@ export default function ClubsPage() {
                           size="sm"
                           onClick={() => startEditClub(club)}
                           className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border-border"
-                          title="Edit club details"
+                          title="Edit club details and image"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -379,105 +520,143 @@ export default function ClubsPage() {
       {/* Club Details Modal */}
       {selectedClub && (
         <Dialog open={!!selectedClub} onOpenChange={() => setSelectedClub(null)}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <Badge variant="outline">{selectedClub.category}</Badge>
-                <span className="text-xs font-bold text-muted-foreground">{selectedClub.code}</span>
-              </div>
-              <DialogTitle className="text-xl font-bold">{selectedClub.name}</DialogTitle>
-              <DialogDescription className="text-xs leading-relaxed pt-2">
-                {selectedClub.description}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3 py-3 border-y border-border text-xs">
-              <div>
-                <p className="font-semibold text-muted-foreground uppercase text-[10px]">Regular Meetings & Venue</p>
-                <p className="font-medium text-foreground mt-0.5">{selectedClub.meeting_info || "Scheduled weekly"}</p>
-              </div>
-              <div>
-                <p className="font-semibold text-muted-foreground uppercase text-[10px]">Club Lead</p>
-                <p className="font-medium text-foreground mt-0.5">{selectedClub.lead_name} ({selectedClub.lead_email || "contact via IIIT Ranchi mail"})</p>
-              </div>
-              {selectedClub.tags && selectedClub.tags.length > 0 && (
+          <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden">
+            <div className="relative h-44 w-full bg-neutral-100 dark:bg-neutral-800">
+              <img
+                src={getClubImage(selectedClub)}
+                alt={selectedClub.name}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = getFallbackClubImage(
+                    selectedClub.name,
+                    selectedClub.description,
+                    selectedClub.category,
+                    selectedClub.code,
+                    selectedClub.tags
+                  )
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+              <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
                 <div>
-                  <p className="font-semibold text-muted-foreground uppercase text-[10px] mb-1">Focus Areas</p>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedClub.tags.map((t) => (
-                      <span key={t} className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium">#{t}</span>
-                    ))}
-                  </div>
+                  <Badge className="bg-white/90 text-black text-[10px] font-bold mb-1">
+                    {selectedClub.category}
+                  </Badge>
+                  <h2 className="text-xl font-black text-white">{selectedClub.name}</h2>
                 </div>
-              )}
+                <span className="rounded bg-black/60 px-2 py-0.5 text-xs font-bold text-white border border-white/20">
+                  {selectedClub.code}
+                </span>
+              </div>
             </div>
 
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between items-center">
-              <div>
-                {canManageClub(selectedClub) && (
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const target = selectedClub
-                        setSelectedClub(null)
-                        startEditClub(target)
-                      }}
-                      className="text-xs gap-1"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Edit Club
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const target = selectedClub
-                        setSelectedClub(null)
-                        setDeletingClub(target)
-                      }}
-                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 gap-1"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete
-                    </Button>
+            <div className="p-5 space-y-4 text-xs">
+              <DialogDescription className="text-xs leading-relaxed text-foreground">
+                {selectedClub.description}
+              </DialogDescription>
+
+              <div className="space-y-3 py-3 border-y border-border">
+                <div>
+                  <p className="font-semibold text-muted-foreground uppercase text-[10px]">
+                    Regular Meetings & Venue
+                  </p>
+                  <p className="font-medium text-foreground mt-0.5">
+                    {selectedClub.meeting_info || "Scheduled weekly"}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-muted-foreground uppercase text-[10px]">
+                    Club Leadership Contact
+                  </p>
+                  <p className="font-medium text-foreground mt-0.5">
+                    {selectedClub.lead_name} (
+                    {selectedClub.lead_email || "contact via IIIT Ranchi official mail"})
+                  </p>
+                </div>
+                {selectedClub.tags && selectedClub.tags.length > 0 && (
+                  <div>
+                    <p className="font-semibold text-muted-foreground uppercase text-[10px] mb-1">
+                      Focus Areas & Activities
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedClub.tags.map((t) => (
+                        <span
+                          key={t}
+                          className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedClub(null)}
-                >
-                  Close
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
-                  onClick={() => {
-                    toast({
-                      title: "Inquiry Sent",
-                      description: `Your interest in ${selectedClub.name} has been notified to ${selectedClub.lead_name}.`,
-                    })
-                    setSelectedClub(null)
-                  }}
-                >
-                  Connect with Club
-                </Button>
+
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-between items-center pt-1">
+                <div>
+                  {canManageClub(selectedClub) && (
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const target = selectedClub
+                          setSelectedClub(null)
+                          startEditClub(target)
+                        }}
+                        className="text-xs gap-1"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit Club
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const target = selectedClub
+                          setSelectedClub(null)
+                          setDeletingClub(target)
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 gap-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedClub(null)}>
+                    Close
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black"
+                    onClick={() => {
+                      toast({
+                        title: "Inquiry Sent",
+                        description: `Your interest in ${selectedClub.name} has been notified to ${selectedClub.lead_name}.`,
+                      })
+                      setSelectedClub(null)
+                    }}
+                  >
+                    Connect with Club
+                  </Button>
+                </div>
               </div>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
       )}
 
       {/* Add Club Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Register Student Club</DialogTitle>
-            <DialogDescription>Submit a new student club or chapter for IIIT Ranchi</DialogDescription>
+            <DialogDescription>
+              Submit a new student club, chapter, or society for IIIT Ranchi
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateClub} className="space-y-3 py-2 text-xs">
@@ -487,7 +666,7 @@ export default function ClubsPage() {
                 id="cname"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Cyber Security Society"
+                placeholder="e.g. Kriti Art Society or Piccell Photography"
                 required
               />
             </div>
@@ -499,14 +678,19 @@ export default function ClubsPage() {
                   id="code"
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value })}
-                  placeholder="e.g. CYBER"
+                  placeholder="e.g. KRITI or PICCELL"
                   required
                 />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="cat">Category *</Label>
-                <Select value={form.category} onValueChange={(val: any) => setForm({ ...form, category: val })}>
-                  <SelectTrigger id="cat"><SelectValue /></SelectTrigger>
+                <Select
+                  value={form.category}
+                  onValueChange={(val: any) => setForm({ ...form, category: val })}
+                >
+                  <SelectTrigger id="cat">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Technical">Technical</SelectItem>
                     <SelectItem value="Cultural">Cultural</SelectItem>
@@ -519,15 +703,65 @@ export default function ClubsPage() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="cdesc">Description *</Label>
+              <Label htmlFor="cdesc">Description & Activities *</Label>
               <Textarea
                 id="cdesc"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                rows={3}
-                placeholder="Club mission and activities"
+                rows={2}
+                placeholder="Describe club activities (e.g. painting, sketching, robotics, photography)"
                 required
               />
+            </div>
+
+            {/* Club Image Input with Live Activity-Aware Preview */}
+            <div className="space-y-1.5 rounded-lg border border-border bg-neutral-50/50 dark:bg-neutral-900/40 p-2.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="cimage" className="font-semibold flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  Club Image URL (Optional)
+                </Label>
+                <span className="text-[10px] text-muted-foreground">
+                  {form.image.trim() ? "Custom URL" : "Auto smart image"}
+                </span>
+              </div>
+              <Input
+                id="cimage"
+                value={form.image}
+                onChange={(e) => {
+                  setForm({ ...form, image: e.target.value })
+                  setCreateImageError(false)
+                }}
+                placeholder="https://images.unsplash.com/... (optional)"
+              />
+              <div className="relative mt-2 h-24 w-full overflow-hidden rounded-md border border-border bg-neutral-100 dark:bg-neutral-800">
+                <img
+                  src={getCreatePreviewUrl()}
+                  alt="Club preview"
+                  className="h-full w-full object-cover"
+                  onError={() => {
+                    setCreateImageError(true)
+                  }}
+                />
+                <div className="absolute bottom-1 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm flex items-center gap-1">
+                  {form.image.trim() && !createImageError ? (
+                    <>
+                      <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                      Custom URL
+                    </>
+                  ) : createImageError ? (
+                    <>
+                      <AlertCircle className="h-2.5 w-2.5 text-amber-400" />
+                      Invalid URL — Using Fallback
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-2.5 w-2.5 text-blue-400" />
+                      Auto-Matched Activity Image
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -568,12 +802,17 @@ export default function ClubsPage() {
                 id="tags"
                 value={form.tags}
                 onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                placeholder="e.g. security, networking, ctfs"
+                placeholder="e.g. photography, sketching, robotics, debate"
               />
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowAddModal(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddModal(false)}
+              >
                 Cancel
               </Button>
               <Button
@@ -599,10 +838,12 @@ export default function ClubsPage() {
       {/* Edit Club Modal */}
       {editingClub && (
         <Dialog open={!!editingClub} onOpenChange={() => setEditingClub(null)}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Club: {editingClub.name}</DialogTitle>
-              <DialogDescription>Update details, leadership, or meeting schedule for this club</DialogDescription>
+              <DialogDescription>
+                Update details, leadership, or custom cover image for this club
+              </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleUpdateClub} className="space-y-3 py-2 text-xs">
@@ -612,7 +853,7 @@ export default function ClubsPage() {
                   id="edit-cname"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  placeholder="e.g. Cyber Security Society"
+                  placeholder="e.g. Kriti Art Society"
                   required
                 />
               </div>
@@ -624,14 +865,19 @@ export default function ClubsPage() {
                     id="edit-code"
                     value={editForm.code}
                     onChange={(e) => setEditForm({ ...editForm, code: e.target.value })}
-                    placeholder="e.g. CYBER"
+                    placeholder="e.g. KRITI"
                     required
                   />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="edit-cat">Category *</Label>
-                  <Select value={editForm.category} onValueChange={(val: any) => setEditForm({ ...editForm, category: val })}>
-                    <SelectTrigger id="edit-cat"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={editForm.category}
+                    onValueChange={(val: any) => setEditForm({ ...editForm, category: val })}
+                  >
+                    <SelectTrigger id="edit-cat">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Technical">Technical</SelectItem>
                       <SelectItem value="Cultural">Cultural</SelectItem>
@@ -644,15 +890,65 @@ export default function ClubsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="edit-cdesc">Description *</Label>
+                <Label htmlFor="edit-cdesc">Description & Activities *</Label>
                 <Textarea
                   id="edit-cdesc"
                   value={editForm.description}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  rows={3}
+                  rows={2}
                   placeholder="Club mission and activities"
                   required
                 />
+              </div>
+
+              {/* Edit Image Input with Live Activity-Aware Preview */}
+              <div className="space-y-1.5 rounded-lg border border-border bg-neutral-50/50 dark:bg-neutral-900/40 p-2.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-image" className="font-semibold flex items-center gap-1.5">
+                    <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    Cover Image URL (Optional)
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    {editForm.image.trim() ? "Custom URL" : "Auto smart image"}
+                  </span>
+                </div>
+                <Input
+                  id="edit-image"
+                  value={editForm.image}
+                  onChange={(e) => {
+                    setEditForm({ ...editForm, image: e.target.value })
+                    setEditImageError(false)
+                  }}
+                  placeholder="https://images.unsplash.com/... (optional)"
+                />
+                <div className="relative mt-2 h-24 w-full overflow-hidden rounded-md border border-border bg-neutral-100 dark:bg-neutral-800">
+                  <img
+                    src={getEditPreviewUrl()}
+                    alt="Club preview"
+                    className="h-full w-full object-cover"
+                    onError={() => {
+                      setEditImageError(true)
+                    }}
+                  />
+                  <div className="absolute bottom-1 right-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm flex items-center gap-1">
+                    {editForm.image.trim() && !editImageError ? (
+                      <>
+                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-400" />
+                        Custom URL
+                      </>
+                    ) : editImageError ? (
+                      <>
+                        <AlertCircle className="h-2.5 w-2.5 text-amber-400" />
+                        Invalid URL — Using Fallback
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-2.5 w-2.5 text-blue-400" />
+                        Auto-Matched Activity Image
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -693,12 +989,17 @@ export default function ClubsPage() {
                   id="edit-tags"
                   value={editForm.tags}
                   onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
-                  placeholder="e.g. security, networking, ctfs"
+                  placeholder="e.g. photography, sketching, robotics, debate"
                 />
               </div>
 
               <DialogFooter className="pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setEditingClub(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingClub(null)}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -732,7 +1033,9 @@ export default function ClubsPage() {
                 Delete Club
               </DialogTitle>
               <DialogDescription className="text-xs pt-1.5 leading-relaxed">
-                Are you sure you want to delete <strong>{deletingClub.name}</strong> ({deletingClub.code})? This will permanently remove the club from CampusOne and cannot be undone.
+                Are you sure you want to delete <strong>{deletingClub.name}</strong> (
+                {deletingClub.code})? This will permanently remove the club from CampusOne and
+                cannot be undone.
               </DialogDescription>
             </DialogHeader>
 

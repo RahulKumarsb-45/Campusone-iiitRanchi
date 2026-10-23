@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Megaphone, Search, Plus, ArrowLeft, Calendar, AlertCircle } from "lucide-react"
+import { Megaphone, Search, Plus, ArrowLeft, Calendar, AlertCircle, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -16,12 +16,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchAnnouncements, createAnnouncement, isStaffOrAdmin, type AnnouncementType } from "@/lib/supabase"
+import {
+  fetchAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  isStaffOrAdmin,
+  type AnnouncementType,
+} from "@/lib/supabase"
 
 export default function AnnouncementsPage() {
   const { user } = useAuth()
@@ -30,11 +47,20 @@ export default function AnnouncementsPage() {
   const [search, setSearch] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingItem, setEditingItem] = useState<AnnouncementType | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const [form, setForm] = useState({
     title: "",
     content: "",
     category: "General",
+    urgent: false,
+  })
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    content: "",
+    category: "",
     urgent: false,
   })
 
@@ -86,12 +112,72 @@ export default function AnnouncementsPage() {
       } else {
         toast({ title: "Announcement posted", description: "Broadcasted on CampusOne." })
         setShowAddModal(false)
+        setForm({
+          title: "",
+          content: "",
+          category: "General",
+          urgent: false,
+        })
         loadData()
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const openEditModal = (item: AnnouncementType) => {
+    setEditingItem(item)
+    setEditForm({
+      title: item.title,
+      content: item.content,
+      category: item.category,
+      urgent: item.urgent,
+    })
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem || !user || !isStaffOrAdmin(user.role)) return
+
+    setIsSubmitting(true)
+    try {
+      const res = await updateAnnouncement(editingItem.id, {
+        title: editForm.title.trim(),
+        content: editForm.content.trim(),
+        category: editForm.category.trim(),
+        urgent: editForm.urgent,
+      })
+
+      if (res.error) {
+        toast({ title: "Failed to update", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Announcement updated", description: "Broadcast details updated." })
+        setEditingItem(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingId || !user || !isStaffOrAdmin(user.role)) return
+
+    try {
+      const res = await deleteAnnouncement(deletingId)
+      if (res.error) {
+        toast({ title: "Failed to delete", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Announcement deleted", description: "Broadcast removed from campus feed." })
+        setDeletingId(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
     }
   }
 
@@ -171,6 +257,28 @@ export default function AnnouncementsPage() {
               <CardContent className="text-xs sm:text-sm text-foreground/90 leading-relaxed whitespace-pre-line pt-1">
                 {item.content}
               </CardContent>
+
+              {user && isStaffOrAdmin(user.role) && (
+                <CardFooter className="pt-2 border-t border-border flex items-center justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1"
+                    onClick={() => openEditModal(item)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => setDeletingId(item.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           ))}
         </div>
@@ -241,6 +349,90 @@ export default function AnnouncementsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Announcement Modal */}
+      <Dialog open={!!editingItem} onOpenChange={(open) => { if (!open) setEditingItem(null) }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Announcement</DialogTitle>
+            <DialogDescription>Modify announcement broadcast details</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <Label htmlFor="edit-title">Headline / Title *</Label>
+              <Input
+                id="edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-cat">Category *</Label>
+              <Input
+                id="edit-cat"
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <Switch
+                id="edit-urg"
+                checked={editForm.urgent}
+                onCheckedChange={(val) => setEditForm({ ...editForm, urgent: val })}
+              />
+              <Label htmlFor="edit-urg" className="font-semibold text-xs cursor-pointer">
+                Mark as Urgent Alert
+              </Label>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-content">Announcement Message *</Label>
+              <Textarea
+                id="edit-content"
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                rows={4}
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingItem(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting} className="bg-black text-white hover:bg-neutral-800">
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => { if (!open) setDeletingId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Announcement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this campus broadcast? It will be removed immediately from all student dashboards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

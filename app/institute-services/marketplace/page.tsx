@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ShoppingBag, Search, Plus, Tag, Phone, ArrowLeft, Trash2, CheckCircle2 } from "lucide-react"
+import { ShoppingBag, Search, Plus, Tag, Phone, ArrowLeft, Trash2, CheckCircle2, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -24,6 +34,7 @@ import { useAuth } from "@/contexts/auth-context"
 import {
   fetchMarketplaceItems,
   createMarketplaceItem,
+  updateMarketplaceItem,
   updateMarketplaceStatus,
   deleteMarketplaceItem,
   type MarketplaceItemType,
@@ -36,6 +47,8 @@ export default function MarketplacePage() {
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("All")
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<MarketplaceItemType | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [form, setForm] = useState({
@@ -46,6 +59,17 @@ export default function MarketplacePage() {
     condition: "Good",
     contact: "",
     image: "",
+  })
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    price: 0,
+    category: "Books & Notes",
+    condition: "Good",
+    contact: "",
+    image: "",
+    status: "available" as "available" | "sold",
   })
 
   const loadData = async () => {
@@ -97,6 +121,59 @@ export default function MarketplacePage() {
       } else {
         toast({ title: "Item listed!", description: "Your item is now live on Campus Marketplace." })
         setShowAddModal(false)
+        setForm({
+          title: "",
+          description: "",
+          price: 0,
+          category: "Books & Notes",
+          condition: "Good",
+          contact: "",
+          image: "",
+        })
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const openEdit = (item: MarketplaceItemType) => {
+    setEditingItem(item)
+    setEditForm({
+      title: item.title,
+      description: item.description,
+      price: item.price,
+      category: item.category,
+      condition: item.condition,
+      contact: item.contact,
+      image: item.image || "",
+      status: item.status,
+    })
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem) return
+    setIsSubmitting(true)
+    try {
+      const res = await updateMarketplaceItem(editingItem.id, {
+        title: editForm.title.trim(),
+        description: editForm.description.trim(),
+        price: Number(editForm.price) || 0,
+        category: editForm.category.trim(),
+        condition: editForm.condition.trim(),
+        contact: editForm.contact.trim(),
+        image: editForm.image.trim() || undefined,
+        status: editForm.status,
+      })
+
+      if (res.error) {
+        toast({ title: "Update failed", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Listing updated", description: "Marketplace item has been updated." })
+        setEditingItem(null)
         loadData()
       }
     } catch (err: any) {
@@ -120,17 +197,22 @@ export default function MarketplacePage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async () => {
+    if (!deletingId) return
+    setIsSubmitting(true)
     try {
-      const res = await deleteMarketplaceItem(id)
+      const res = await deleteMarketplaceItem(deletingId)
       if (res.error) {
         toast({ title: "Delete failed", description: res.error, variant: "destructive" })
       } else {
         toast({ title: "Item removed", description: "Listing deleted from marketplace." })
+        setDeletingId(null)
         loadData()
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -255,14 +337,25 @@ export default function MarketplacePage() {
                     </Button>
                   )}
                   {isOwnerOrAdmin && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8 px-2 gap-1"
+                        onClick={() => openEdit(item)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setDeletingId(item.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   )}
                   {!isOwnerOrAdmin && (
                     <Button size="sm" variant="outline" className="w-full text-xs" asChild>
@@ -384,6 +477,142 @@ export default function MarketplacePage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Edit Listing</DialogTitle>
+            <DialogDescription>Modify details, price, condition or listing status</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-3 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-title">Item Name *</Label>
+                <Input
+                  id="edit-title"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Listing Status</Label>
+                <Select value={editForm.status} onValueChange={(val: any) => setEditForm({ ...editForm, status: val })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-price">Price (₹) *</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm({ ...editForm, price: Number.parseFloat(e.target.value) || 0 })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="edit-cat">Category *</Label>
+                <Select value={editForm.category} onValueChange={(val) => setEditForm({ ...editForm, category: val })}>
+                  <SelectTrigger id="edit-cat"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Books & Notes">Books & Notes</SelectItem>
+                    <SelectItem value="Vehicles / Cycles">Vehicles / Cycles</SelectItem>
+                    <SelectItem value="Hostel Essentials">Hostel Essentials</SelectItem>
+                    <SelectItem value="Electronics">Electronics</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-cond">Condition *</Label>
+                <Select value={editForm.condition} onValueChange={(val) => setEditForm({ ...editForm, condition: val })}>
+                  <SelectTrigger id="edit-cond"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Like New">Like New</SelectItem>
+                    <SelectItem value="Good">Good</SelectItem>
+                    <SelectItem value="Fair">Fair / Usable</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="edit-contact">Contact Details *</Label>
+                <Input
+                  id="edit-contact"
+                  value={editForm.contact}
+                  onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-img">Image URL (Optional)</Label>
+              <Input
+                id="edit-img"
+                value={editForm.image}
+                onChange={(e) => setEditForm({ ...editForm, image: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-desc">Description *</Label>
+              <Textarea
+                id="edit-desc"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                rows={3}
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingItem(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting} className="bg-black text-white hover:bg-neutral-800">
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Listing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This item will be permanently removed from the Campus Marketplace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isSubmitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSubmitting ? "Deleting..." : "Delete Item"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

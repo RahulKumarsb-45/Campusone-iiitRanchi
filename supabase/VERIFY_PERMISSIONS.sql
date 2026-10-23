@@ -92,3 +92,13 @@ select
 from information_schema.routine_privileges
 where routine_schema = 'public'
   and routine_name = 'bootstrap_admin';
+
+-- 7. VERIFY CLUB IMAGES AND DISTINCT ACTIVITY MAPPINGS
+select 
+  id,
+  name,
+  code,
+  category,
+  image
+from public.clubs
+order by name;
