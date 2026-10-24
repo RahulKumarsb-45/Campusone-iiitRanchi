@@ -51,6 +51,8 @@ import {
   deleteNotice,
   updateAnnouncement,
   deleteAnnouncement,
+  updateGalleryImage,
+  deleteGalleryImage,
   updateRegistration,
   fetchUserRegistrations,
   fetchAllRegistrations,
@@ -608,6 +610,8 @@ async function runTestSuite() {
   assert(typeof deleteNotice === "function", "CRUD: deleteNotice is exported and callable");
   assert(typeof updateAnnouncement === "function", "CRUD: updateAnnouncement is exported and callable");
   assert(typeof deleteAnnouncement === "function", "CRUD: deleteAnnouncement is exported and callable");
+  assert(typeof updateGalleryImage === "function", "CRUD: updateGalleryImage is exported and callable");
+  assert(typeof deleteGalleryImage === "function", "CRUD: deleteGalleryImage is exported and callable");
 
   console.log();
 

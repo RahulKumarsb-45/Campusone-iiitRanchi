@@ -2,11 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Building2, Search, Plus, ArrowLeft, Calendar, ShieldCheck, Utensils, AlertCircle, RefreshCw } from "lucide-react"
+import {
+  Building2,
+  Search,
+  Plus,
+  ArrowLeft,
+  Calendar,
+  ShieldCheck,
+  Utensils,
+  AlertCircle,
+  RefreshCw,
+  Pencil,
+  Trash2,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -16,12 +28,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchNotices, createNotice, type NoticeType } from "@/lib/supabase"
+import {
+  fetchNotices,
+  createNotice,
+  updateNotice,
+  deleteNotice,
+  isStaffOrAdmin,
+  type NoticeType,
+} from "@/lib/supabase"
 
 export default function HostelNoticesPage() {
   const { user } = useAuth()
@@ -31,7 +60,11 @@ export default function HostelNoticesPage() {
   const [search, setSearch] = useState("")
   const [priorityFilter, setPriorityFilter] = useState("All")
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editingNotice, setEditingNotice] = useState<NoticeType | null>(null)
+  const [deletingNoticeId, setDeletingNoticeId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const isStaff = isStaffOrAdmin(user?.role)
 
   const [form, setForm] = useState({
     title: "",
@@ -39,6 +72,14 @@ export default function HostelNoticesPage() {
     department: "Chief Warden Office",
     priority: "Normal" as NoticeType["priority"],
     target_audience: "Hostel Residents",
+  })
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    content: "",
+    department: "",
+    priority: "Normal" as NoticeType["priority"],
+    target_audience: "",
   })
 
   const loadData = useCallback(async () => {
@@ -87,6 +128,16 @@ export default function HostelNoticesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
+
+    if (!isStaff) {
+      toast({
+        title: "Permission Denied",
+        description: "Only authorized wardens and staff may publish official hostel notices.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -105,6 +156,93 @@ export default function HostelNoticesPage() {
       } else {
         toast({ title: "Hostel notice published", description: "Notice is now visible to residents." })
         setShowAddModal(false)
+        setForm({
+          title: "",
+          content: "",
+          department: "Chief Warden Office",
+          priority: "Normal",
+          target_audience: "Hostel Residents",
+        })
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const openEdit = (notice: NoticeType) => {
+    setEditingNotice(notice)
+    setEditForm({
+      title: notice.title,
+      content: notice.content,
+      department: notice.department,
+      priority: notice.priority,
+      target_audience: notice.target_audience || "Hostel Residents",
+    })
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingNotice) return
+
+    if (!isStaff) {
+      toast({
+        title: "Permission Denied",
+        description: "Only authorized staff can edit hostel notices.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const res = await updateNotice(editingNotice.id, {
+        title: editForm.title.trim(),
+        content: editForm.content.trim(),
+        department: editForm.department.trim(),
+        priority: editForm.priority,
+        target_audience: editForm.target_audience.trim(),
+      })
+
+      if (res.error) {
+        toast({ title: "Update failed", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Notice updated", description: "Hostel circular has been updated." })
+        setEditingNotice(null)
+        loadData()
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    if (!deletingNoticeId) return
+    const targetId = deletingNoticeId
+
+    if (!isStaff) {
+      toast({
+        title: "Permission Denied",
+        description: "Only authorized staff can delete hostel notices.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const res = await deleteNotice(targetId)
+      if (res.error) {
+        toast({ title: "Delete failed", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Notice deleted", description: "Hostel circular has been removed." })
+        setNotices((prev) => prev.filter((n) => n.id !== targetId))
+        setDeletingNoticeId(null)
         loadData()
       }
     } catch (err: any) {
@@ -134,7 +272,8 @@ export default function HostelNoticesPage() {
           </p>
         </div>
 
-        {user && (
+        {/* Role-governed action button: Only staff/warden/admin can publish */}
+        {isStaff && (
           <Button
             onClick={() => setShowAddModal(true)}
             className="bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black gap-1.5"
@@ -203,12 +342,37 @@ export default function HostelNoticesPage() {
                     </Badge>
                     <span className="text-xs text-muted-foreground">Target: {notice.target_audience}</span>
                   </div>
-                  <Badge
-                    variant={notice.priority === "High" ? "destructive" : "secondary"}
-                    className="text-xs px-2.5"
-                  >
-                    {notice.priority} Priority
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={notice.priority === "High" ? "destructive" : "secondary"}
+                      className="text-xs px-2.5"
+                    >
+                      {notice.priority} Priority
+                    </Badge>
+
+                    {/* Staff/Admin Edit & Delete controls */}
+                    {isStaff && (
+                      <div className="flex items-center gap-1 ml-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
+                          onClick={() => openEdit(notice)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={() => setDeletingNoticeId(notice.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <CardTitle className="text-lg font-bold text-foreground">{notice.title}</CardTitle>
                 <CardDescription className="text-xs flex items-center gap-1.5 mt-1">
@@ -301,6 +465,105 @@ export default function HostelNoticesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Notice Modal */}
+      <Dialog open={!!editingNotice} onOpenChange={() => setEditingNotice(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Hostel Notice</DialogTitle>
+            <DialogDescription>Modify notice title, department, priority or content</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <Label htmlFor="edit-title">Notice Title *</Label>
+              <Input
+                id="edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-dept">Issuing Authority *</Label>
+                <Input
+                  id="edit-dept"
+                  value={editForm.department}
+                  onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-pri">Priority Level *</Label>
+                <Select
+                  value={editForm.priority}
+                  onValueChange={(val: any) => setEditForm({ ...editForm, priority: val })}
+                >
+                  <SelectTrigger id="edit-pri"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Normal">Normal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-aud">Target Audience</Label>
+              <Input
+                id="edit-aud"
+                value={editForm.target_audience}
+                onChange={(e) => setEditForm({ ...editForm, target_audience: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="edit-content">Notice Text *</Label>
+              <Textarea
+                id="edit-content"
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                rows={4}
+                required
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setEditingNotice(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting} className="bg-black text-white hover:bg-neutral-800">
+                {isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={!!deletingNoticeId} onOpenChange={(open) => !open && setDeletingNoticeId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete hostel notice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this notice from the hostel circulars board.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => handleDelete(e)}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deleting..." : "Delete Notice"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

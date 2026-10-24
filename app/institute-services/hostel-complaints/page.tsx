@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Filter,
   RefreshCw,
+  Trash2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -232,18 +233,23 @@ export default function HostelComplaintsPage() {
     }
   }
 
-  const handleCancelComplaint = async (id: number) => {
+  const handleCancelComplaint = async (id: number, e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    setIsSubmitting(true)
     try {
       const res = await deleteHostelComplaint(id)
       if (res.error) {
-        toast({ title: "Cancellation failed", description: res.error, variant: "destructive" })
+        toast({ title: "Delete / Cancellation failed", description: res.error, variant: "destructive" })
       } else {
-        toast({ title: "Complaint cancelled", description: "Your ticket has been removed." })
+        toast({ title: "Complaint removed", description: "The ticket has been deleted." })
+        setComplaints((prev) => prev.filter((c) => c.id !== id))
         setShowCancelAlert(null)
         loadData()
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -482,22 +488,33 @@ export default function HostelComplaintsPage() {
 
                   {/* Warden / Admin Status Update Button */}
                   {isStaff && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedComplaint(item)
-                        setUpdateStatus(item.status === "Open" ? "In Progress" : (item.status as any))
-                        setAssignedTo(item.assigned_to || "")
-                        setResolutionNotes(item.resolution_notes || "")
-                        setRejectionReason(item.rejection_reason || "")
-                        setShowStatusModal(true)
-                      }}
-                      className="h-7 text-xs gap-1 border-border"
-                    >
-                      Update Status
-                      <ChevronRight className="h-3 w-3" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedComplaint(item)
+                          setUpdateStatus(item.status === "Open" ? "In Progress" : (item.status as any))
+                          setAssignedTo(item.assigned_to || "")
+                          setResolutionNotes(item.resolution_notes || "")
+                          setRejectionReason(item.rejection_reason || "")
+                          setShowStatusModal(true)
+                        }}
+                        className="h-7 text-xs gap-1 border-border"
+                      >
+                        Update Status
+                        <ChevronRight className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowCancelAlert(item.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 h-7 px-2 text-xs gap-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardFooter>
@@ -686,22 +703,23 @@ export default function HostelComplaintsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation Alert to withdraw complaint */}
+      {/* Confirmation Alert to withdraw or delete complaint */}
       <AlertDialog open={showCancelAlert !== null} onOpenChange={(open) => !open && setShowCancelAlert(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Withdraw this complaint?</AlertDialogTitle>
+            <AlertDialogTitle>Delete / Withdraw Complaint #{showCancelAlert}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel ticket #{showCancelAlert}? This will remove it from the warden&apos;s repair queue.
+              Are you sure you want to remove ticket #{showCancelAlert}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Ticket</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting}>Keep Ticket</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => showCancelAlert && handleCancelComplaint(showCancelAlert)}
+              onClick={(e) => showCancelAlert && handleCancelComplaint(showCancelAlert, e)}
               className="bg-red-600 text-white hover:bg-red-700"
+              disabled={isSubmitting}
             >
-              Withdraw Request
+              {isSubmitting ? "Removing..." : "Confirm Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

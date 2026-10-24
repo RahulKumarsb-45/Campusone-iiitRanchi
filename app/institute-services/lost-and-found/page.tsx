@@ -216,15 +216,18 @@ export default function LostAndFoundPage() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
     if (!deletingId) return
+    const targetId = deletingId
     setIsSubmitting(true)
     try {
-      const res = await deleteLostFoundItem(deletingId)
+      const res = await deleteLostFoundItem(targetId)
       if (res.error) {
         toast({ title: "Delete failed", description: res.error, variant: "destructive" })
       } else {
         toast({ title: "Item deleted", description: "Listing has been removed." })
+        setItems((prev) => prev.filter((item) => item.id !== targetId))
         setDeletingId(null)
         loadData()
       }
@@ -624,7 +627,7 @@ export default function LostAndFoundPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(e) => handleDelete(e)}
               disabled={isSubmitting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

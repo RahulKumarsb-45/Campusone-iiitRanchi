@@ -1374,11 +1374,23 @@ export async function updateNotice(
 
 export async function deleteNotice(id: number) {
   try {
-    const { error } = await supabase.from("notices").delete().eq("id", id);
-    if (error) return { error: error.message };
-    return { success: true };
+    const { data, error } = await supabase
+      .from("notices")
+      .delete()
+      .eq("id", id)
+      .select();
+    if (error) {
+      console.warn("deleteNotice DB error:", error.message);
+      return { error: error.message };
+    }
+    if (!data || data.length === 0) {
+      return {
+        error: "Notice could not be deleted. You may not have administrative permissions to delete this notice.",
+      };
+    }
+    return { success: true, data };
   } catch (err: any) {
-    return { error: err.message };
+    return { error: err?.message || "Failed to delete notice" };
   }
 }
 
@@ -1542,15 +1554,36 @@ export async function createLostFoundItem(
   item: Omit<LostFoundItemType, "id" | "created_at">,
 ) {
   try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { error: "Please log in before submitting a Lost & Found item." };
+    }
+
+    const payload = {
+      ...item,
+      user_id: user.id,
+    };
     const { data, error } = await supabase
       .from("lost_found_items")
-      .insert([item])
+      .insert(payload)
       .select()
       .single();
-    if (error) return { error: error.message };
+
+    if (error) {
+      console.warn("createLostFoundItem DB error:", error.message);
+      return { error: error.message };
+    }
+
     return { data: data as LostFoundItemType };
-  } catch (err: any) {
-    return { error: err.message };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Failed to submit Lost & Found item.";
+    console.error("createLostFoundItem exception:", err);
+    return { error: message };
   }
 }
 
@@ -1593,14 +1626,23 @@ export async function updateLostFoundItem(
 
 export async function deleteLostFoundItem(id: number) {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("lost_found_items")
       .delete()
-      .eq("id", id);
-    if (error) return { error: error.message };
-    return { success: true };
+      .eq("id", id)
+      .select();
+    if (error) {
+      console.warn("deleteLostFoundItem DB error:", error.message);
+      return { error: error.message };
+    }
+    if (!data || data.length === 0) {
+      return {
+        error: "Item could not be deleted. You may not have permission to delete this report.",
+      };
+    }
+    return { success: true, data };
   } catch (err: any) {
-    return { error: err.message };
+    return { error: err?.message || "Failed to delete lost & found report" };
   }
 }
 
@@ -1734,14 +1776,23 @@ export async function updateMarketplaceItem(
 
 export async function deleteMarketplaceItem(id: number) {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("marketplace_items")
       .delete()
-      .eq("id", id);
-    if (error) return { error: error.message };
-    return { success: true };
+      .eq("id", id)
+      .select();
+    if (error) {
+      console.warn("deleteMarketplaceItem DB error:", error.message);
+      return { error: error.message };
+    }
+    if (!data || data.length === 0) {
+      return {
+        error: "Listing could not be deleted. You may not have permission to delete this marketplace item.",
+      };
+    }
+    return { success: true, data };
   } catch (err: any) {
-    return { error: err.message };
+    return { error: err?.message || "Failed to delete marketplace listing" };
   }
 }
 
@@ -1830,6 +1881,47 @@ export async function createGalleryImage(
     return { data: data as GalleryImageType };
   } catch (err: any) {
     return { error: err.message };
+  }
+}
+
+export async function updateGalleryImage(
+  id: number,
+  updates: Partial<GalleryImageType>,
+) {
+  try {
+    const { id: _discardId, created_at: _discardCreated, ...safeUpdates } = updates as any;
+    const { data, error } = await supabase
+      .from("gallery_images")
+      .update(safeUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { data: data as GalleryImageType };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
+
+export async function deleteGalleryImage(id: number) {
+  try {
+    const { data, error } = await supabase
+      .from("gallery_images")
+      .delete()
+      .eq("id", id)
+      .select();
+    if (error) {
+      console.warn("deleteGalleryImage DB error:", error.message);
+      return { error: error.message };
+    }
+    if (!data || data.length === 0) {
+      return {
+        error: "Photo could not be deleted. You may not have permission to delete this image.",
+      };
+    }
+    return { success: true, data };
+  } catch (err: any) {
+    return { error: err?.message || "Failed to delete gallery image" };
   }
 }
 
@@ -1993,13 +2085,22 @@ export async function updateHostelComplaintStatus(
 
 export async function deleteHostelComplaint(id: number) {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("hostel_complaints")
       .delete()
-      .eq("id", id);
-    if (error) return { error: error.message };
-    return { success: true };
+      .eq("id", id)
+      .select();
+    if (error) {
+      console.warn("deleteHostelComplaint DB error:", error.message);
+      return { error: error.message };
+    }
+    if (!data || data.length === 0) {
+      return {
+        error: "Complaint could not be deleted. Only open tickets can be withdrawn by students, or you may lack warden privileges.",
+      };
+    }
+    return { success: true, data };
   } catch (err: any) {
-    return { error: err.message };
+    return { error: err?.message || "Failed to delete hostel complaint" };
   }
 }

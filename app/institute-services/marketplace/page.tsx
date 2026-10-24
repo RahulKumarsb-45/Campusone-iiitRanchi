@@ -42,6 +42,9 @@ import {
   type MarketplaceItemType,
 } from "@/lib/supabase"
 
+const FALLBACK_MARKETPLACE_IMAGE =
+  "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80"
+
 export default function MarketplacePage() {
   const { user } = useAuth()
   const [items, setItems] = useState<MarketplaceItemType[]>([])
@@ -52,6 +55,7 @@ export default function MarketplacePage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState<MarketplaceItemType | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [failedImages, setFailedImages] = useState<Record<number, boolean>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [form, setForm] = useState({
@@ -220,15 +224,18 @@ export default function MarketplacePage() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
     if (!deletingId) return
+    const targetId = deletingId
     setIsSubmitting(true)
     try {
-      const res = await deleteMarketplaceItem(deletingId)
+      const res = await deleteMarketplaceItem(targetId)
       if (res.error) {
         toast({ title: "Delete failed", description: res.error, variant: "destructive" })
       } else {
         toast({ title: "Item removed", description: "Listing deleted from marketplace." })
+        setItems((prev) => prev.filter((item) => item.id !== targetId))
         setDeletingId(null)
         loadData()
       }
@@ -334,11 +341,12 @@ export default function MarketplacePage() {
                   {item.image && (
                     <div className="relative h-44 w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                       <Image
-                        src={item.image}
+                        src={failedImages[item.id] ? FALLBACK_MARKETPLACE_IMAGE : item.image}
                         alt={item.title}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
+                        onError={() => setFailedImages((prev) => ({ ...prev, [item.id]: true }))}
                       />
                     </div>
                   )}
@@ -643,7 +651,7 @@ export default function MarketplacePage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(e) => handleDelete(e)}
               disabled={isSubmitting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
