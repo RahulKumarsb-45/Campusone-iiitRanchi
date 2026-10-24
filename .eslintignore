@@ -1,0 +1,10 @@
+.next/
+node_modules/
+out/
+build/
+next-env.d.ts
+public/sw.js
+tailwind.config.js
+types/qrcode.d.ts
+scratch/
+scripts/
